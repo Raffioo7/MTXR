@@ -6,6 +6,8 @@ TagManager:
   tags:
   - earth
   - mars
+  - earthInfo
+  - marsInfo
   layers:
   - Default
   - TransparentFX

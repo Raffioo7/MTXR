@@ -320,6 +320,7 @@ GameObject:
   - component: {fileID: 1361868544}
   - component: {fileID: 1361868546}
   - component: {fileID: 1361868547}
+  - component: {fileID: 1361868548}
   m_Layer: 0
   m_Name: XR Origin
   m_TagString: Untagged
@@ -390,6 +391,20 @@ MonoBehaviour:
   ArPrefabs:
   - {fileID: 4789558699578651159, guid: e891ae0df15114147b2f871f03358aff, type: 3}
   - {fileID: 4840462464193811658, guid: 8710af0fe6c3ed14f82fb07a308822cd, type: 3}
+--- !u!114 &1361868548
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1361868543}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: a92710138a49d6745a5e73eb9fb2c423, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  marsPopup: {fileID: 8741692453341535548, guid: 83bf546b55a562842a3f27e002fe5db5, type: 3}
+  earthPopup: {fileID: 738804431594055406, guid: 20145cb380db1db41af9e297ea5c3a75, type: 3}
 --- !u!1 &2053863306
 GameObject:
   m_ObjectHideFlags: 0
