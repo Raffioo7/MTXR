@@ -1,13 +1,15 @@
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
-
+using TMPro;
 public class ARTouch : MonoBehaviour
 {
 
 
     public GameObject marsPopup;
     public GameObject earthPopup;
+
+    public TMP_Text infoBox;
     // Start is called before the first frame update
     void Start()
     {
@@ -30,18 +32,25 @@ public class ARTouch : MonoBehaviour
 
                 if (hit.transform.tag == "mars")
                 {
+                    /*
                     Vector3 pos = hit.point;
                     pos.z += 0.25f;
                     pos.y += 0.25f;
                     Instantiate(marsPopup, pos, transform.rotation);
+                    */
+                    
+                    infoBox.text = "Mars \n Let's go visit!";
                 }
                 
                 if (hit.transform.tag == "earth")
-                {
+                {   /*
                     Vector3 pos = hit.point;
                     pos.z += 0.25f;
                     pos.y += 0.25f;
                     Instantiate(earthPopup, pos, transform.rotation);
+                    */
+                    
+                    infoBox.text = "Earth \n Mostly harmless";
                 }
                 
                 if (hit.transform.tag == "marsInfo")
