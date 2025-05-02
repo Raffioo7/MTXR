@@ -141,7 +141,12 @@ PlayerSettings:
   visionOSBundleVersion: 1.0
   tvOSBundleVersion: 1.0
   bundleVersion: 0.1.0
-  preloadedAssets: []
+  preloadedAssets:
+  - {fileID: -944628639613478452, guid: 052faaac586de48259a63d0c4782560b, type: 3}
+  - {fileID: 11400000, guid: c677e5c4eb85b7849a8da406775c299d, type: 2}
+  - {fileID: 11400000, guid: 8022c9030cb64e642b3a90112a517f4f, type: 2}
+  - {fileID: 6165939429361884912, guid: 70fad9d0449af7d4fa8ea0231438476c, type: 2}
+  - {fileID: -5238085210119229408, guid: 24adaefc903779b4db587c6420dbd1e6, type: 2}
   metroInputSource: 0
   wsaTransparentSwapchain: 0
   m_HolographicPauseOnTrackingLoss: 1
@@ -842,11 +847,11 @@ PlayerSettings:
   m_MobileRenderingPath: 1
   metroPackageName: MRTK32ndrun
   metroPackageVersion: 1.0.0.0
-  metroCertificatePath: 
+  metroCertificatePath: Assets/WSATestCertificate.pfx
   metroCertificatePassword: 
-  metroCertificateSubject: 
-  metroCertificateIssuer: 
-  metroCertificateNotAfter: 0000000000000000
+  metroCertificateSubject: DefaultCompany
+  metroCertificateIssuer: DefaultCompany
+  metroCertificateNotAfter: 800c2cc541dadc01
   metroApplicationDescription: MRTK3 2nd run
   wsaImages: {}
   metroTileShortName: MRTK3 2nd run
