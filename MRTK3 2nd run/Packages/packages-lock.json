@@ -351,11 +351,11 @@
       }
     },
     "org.mixedrealitytoolkit.core": {
-      "version": "file:MixedReality/org.mixedrealitytoolkit.core-3.2.2.tgz",
+      "version": "file:MixedReality/org.mixedrealitytoolkit.core-4.0.0-pre.1.tgz",
       "depth": 0,
       "source": "local-tarball",
       "dependencies": {
-        "com.unity.xr.interaction.toolkit": "2.3.0",
+        "com.unity.xr.interaction.toolkit": "3.0.3",
         "com.unity.xr.management": "4.2.1",
         "com.unity.xr.core-utils": "2.1.0"
       }
@@ -378,7 +378,7 @@
       }
     },
     "org.mixedrealitytoolkit.input": {
-      "version": "file:MixedReality/org.mixedrealitytoolkit.input-3.2.2.tgz",
+      "version": "file:MixedReality/org.mixedrealitytoolkit.input-4.0.0-pre.1.tgz",
       "depth": 0,
       "source": "local-tarball",
       "dependencies": {
@@ -387,19 +387,19 @@
         "com.unity.xr.arfoundation": "5.0.5",
         "com.unity.xr.core-utils": "2.1.0",
         "com.unity.xr.hands": "1.3.0",
-        "com.unity.xr.interaction.toolkit": "2.3.0",
-        "org.mixedrealitytoolkit.core": "3.2.0"
+        "com.unity.xr.interaction.toolkit": "3.0.3",
+        "org.mixedrealitytoolkit.core": "4.0.0"
       }
     },
     "org.mixedrealitytoolkit.spatialmanipulation": {
-      "version": "file:MixedReality/org.mixedrealitytoolkit.spatialmanipulation-3.3.1.tgz",
+      "version": "file:MixedReality/org.mixedrealitytoolkit.spatialmanipulation-4.0.0-pre.1.tgz",
       "depth": 0,
       "source": "local-tarball",
       "dependencies": {
-        "org.mixedrealitytoolkit.core": "3.1.0",
-        "org.mixedrealitytoolkit.uxcore": "3.0.0",
+        "org.mixedrealitytoolkit.core": "4.0.0",
+        "org.mixedrealitytoolkit.uxcore": "4.0.0",
         "com.unity.inputsystem": "1.6.1",
-        "com.unity.xr.interaction.toolkit": "2.3.0"
+        "com.unity.xr.interaction.toolkit": "3.0.3"
       }
     },
     "org.mixedrealitytoolkit.standardassets": {
@@ -419,37 +419,37 @@
       }
     },
     "org.mixedrealitytoolkit.uxcomponents": {
-      "version": "file:MixedReality/org.mixedrealitytoolkit.uxcomponents-3.3.0.tgz",
+      "version": "file:MixedReality/org.mixedrealitytoolkit.uxcomponents-4.0.0-pre.1.tgz",
       "depth": 0,
       "source": "local-tarball",
       "dependencies": {
         "com.microsoft.mrtk.graphicstools.unity": "0.5.12",
-        "org.mixedrealitytoolkit.uxcore": "3.2.0",
-        "org.mixedrealitytoolkit.spatialmanipulation": "3.0.0",
+        "org.mixedrealitytoolkit.uxcore": "4.0.0",
+        "org.mixedrealitytoolkit.spatialmanipulation": "4.0.0",
         "org.mixedrealitytoolkit.standardassets": "3.1.0",
-        "com.unity.xr.interaction.toolkit": "2.3.0"
+        "com.unity.xr.interaction.toolkit": "3.0.3"
       }
     },
     "org.mixedrealitytoolkit.uxcomponents.noncanvas": {
-      "version": "file:MixedReality/org.mixedrealitytoolkit.uxcomponents.noncanvas-3.1.4.tgz",
+      "version": "file:MixedReality/org.mixedrealitytoolkit.uxcomponents.noncanvas-4.0.0-pre.1.tgz",
       "depth": 0,
       "source": "local-tarball",
       "dependencies": {
-        "org.mixedrealitytoolkit.uxcore": "3.1.0",
-        "org.mixedrealitytoolkit.spatialmanipulation": "3.0.0",
+        "org.mixedrealitytoolkit.uxcore": "4.0.0",
+        "org.mixedrealitytoolkit.spatialmanipulation": "4.0.0",
         "org.mixedrealitytoolkit.standardassets": "3.1.0"
       }
     },
     "org.mixedrealitytoolkit.uxcore": {
-      "version": "file:MixedReality/org.mixedrealitytoolkit.uxcore-3.2.2.tgz",
+      "version": "file:MixedReality/org.mixedrealitytoolkit.uxcore-4.0.0-pre.1.tgz",
       "depth": 0,
       "source": "local-tarball",
       "dependencies": {
         "com.microsoft.mrtk.graphicstools.unity": "0.5.12",
-        "org.mixedrealitytoolkit.core": "3.2.0",
+        "org.mixedrealitytoolkit.core": "4.0.0",
         "com.unity.inputsystem": "1.6.1",
         "com.unity.textmeshpro": "3.0.6",
-        "com.unity.xr.interaction.toolkit": "2.3.0"
+        "com.unity.xr.interaction.toolkit": "3.0.3"
       }
     },
     "org.mixedrealitytoolkit.windowsspeech": {
