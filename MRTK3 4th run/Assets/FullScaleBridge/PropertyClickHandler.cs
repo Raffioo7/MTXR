@@ -157,10 +157,10 @@ public class PropertyClickHandler : MonoBehaviour
             }
             
             // Format the property text with hierarchy info
-            string displayText = $"<b>Object:</b> {clickedObject.name}\n\n";
-            displayText += $"<b>Parent:</b> {parentName}\n\n";
-            displayText += $"<b>Grandparent:</b> {grandparentName}\n\n";
-            displayText += $"<b>Family Type:</b> {data.familyType}\n\n";
+            string displayText = $"<b>Substructure:</b> {grandparentName}\n";
+            displayText += $"<b>Element:</b> {parentName}\n";
+            displayText += $"<b>Object ID:</b> {clickedObject.name}\n";
+            displayText += $"<b>Family Type:</b> {data.familyType}\n";
             displayText += $"<b>Year:</b> {data.year}";
             
             propertyDisplay.text = displayText;
