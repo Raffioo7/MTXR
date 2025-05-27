@@ -9,6 +9,8 @@ public class ColumnSetting
     public bool enabled = true;
     [Tooltip("Preview of first data entry")]
     public string previewData = "";
+    [Tooltip("Display order in property panel (lower numbers show first)")]
+    public int displayOrder = 0;
     
     public ColumnSetting(string name)
     {
@@ -16,11 +18,12 @@ public class ColumnSetting
         enabled = true;
     }
     
-    public ColumnSetting(string name, string preview)
+    public ColumnSetting(string name, string preview, int order = 0)
     {
         columnName = name;
         enabled = true;
         previewData = preview;
+        displayOrder = order;
     }
 }
 
@@ -29,6 +32,17 @@ public class PropertyLoader : MonoBehaviour
     [Header("CSV Data")]
     public TextAsset csvFile;
     
+    [Header("Display Settings")]
+    [Tooltip("Control which hierarchy info to show and in what order")]
+    public bool showSubstructure = true;
+    public int substructureOrder = -3;
+    
+    public bool showElement = true;
+    public int elementOrder = -2;
+    
+    public bool showObjectID = true;
+    public int objectIDOrder = -1;
+    
     [Header("Column Settings")]
     [Tooltip("Column settings are automatically generated from CSV headers. First column (Family Type) is always used for matching.")]
     public List<ColumnSetting> columnSettings = new List<ColumnSetting>();
@@ -36,6 +50,10 @@ public class PropertyLoader : MonoBehaviour
     [Header("Controls")]
     [Button("Refresh Column Settings")]
     public bool refreshColumns;
+    
+    [Space]
+    [Button("Sort by Display Order")]
+    public bool sortByOrder;
     
     [Header("Debug")]
     public bool showDebugLog = true;
@@ -52,6 +70,13 @@ public class PropertyLoader : MonoBehaviour
         {
             RefreshColumnSettings();
         }
+        
+        // Sort columns by display order
+        if (sortByOrder)
+        {
+            SortColumnsByDisplayOrder();
+            sortByOrder = false;
+        }
     }
     
     [ContextMenu("Refresh Column Settings")]
@@ -65,6 +90,11 @@ public class PropertyLoader : MonoBehaviour
         
         // Try to read with UTF-8 encoding to handle accents and special characters
         string csvText = System.Text.Encoding.UTF8.GetString(csvFile.bytes);
+        
+        // Remove BOM if present at the start of the file
+        if (csvText.StartsWith("\uFEFF"))
+            csvText = csvText.Substring(1);
+            
         string[] lines = csvText.Split('\n');
         
         if (showDebugLog)
@@ -111,6 +141,19 @@ public class PropertyLoader : MonoBehaviour
         for (int i = 0; i < headers.Length; i++)
         {
             string cleanHeader = headers[i].Trim().Trim('"');
+            
+            // Remove BOM and other invisible characters
+            if (cleanHeader.Length > 0 && cleanHeader[0] == '\uFEFF')
+                cleanHeader = cleanHeader.Substring(1);
+            
+            // Remove any other problematic characters
+            cleanHeader = cleanHeader.Replace('\u00A0', ' '); // Non-breaking space
+            cleanHeader = cleanHeader.Replace('\u2000', ' '); // En quad
+            cleanHeader = cleanHeader.Replace('\u2001', ' '); // Em quad
+            cleanHeader = cleanHeader.Replace('\u2002', ' '); // En space
+            cleanHeader = cleanHeader.Replace('\u2003', ' '); // Em space
+            cleanHeader = cleanHeader.Trim();
+            
             if (!string.IsNullOrEmpty(cleanHeader))
             {
                 // Get preview data for this column
@@ -132,7 +175,7 @@ public class PropertyLoader : MonoBehaviour
                     Debug.Log($"Column {i}: Header='{cleanHeader}', Preview='{previewData}'");
                 }
                 
-                ColumnSetting setting = new ColumnSetting(cleanHeader, previewData);
+                ColumnSetting setting = new ColumnSetting(cleanHeader, previewData, i);
                 // First column is always enabled (family type for matching)
                 if (i == 0) setting.enabled = true;
                 columnSettings.Add(setting);
@@ -142,6 +185,19 @@ public class PropertyLoader : MonoBehaviour
         if (showDebugLog)
         {
             Debug.Log($"Refreshed column settings. Found {columnSettings.Count} columns: {string.Join(", ", columnSettings.Select(c => c.columnName))}");
+        }
+    }
+    
+    [ContextMenu("Sort by Display Order")]
+    void SortColumnsByDisplayOrder()
+    {
+        if (columnSettings.Count == 0) return;
+        
+        columnSettings = columnSettings.OrderBy(c => c.displayOrder).ToList();
+        
+        if (showDebugLog)
+        {
+            Debug.Log("Columns sorted by display order: " + string.Join(", ", columnSettings.Select(c => $"{c.columnName}({c.displayOrder})")));
         }
     }
     
@@ -155,6 +211,11 @@ public class PropertyLoader : MonoBehaviour
         
         // Try to read with UTF-8 encoding to handle accents and special characters
         string csvText = System.Text.Encoding.UTF8.GetString(csvFile.bytes);
+        
+        // Remove BOM if present at the start of the file
+        if (csvText.StartsWith("\uFEFF"))
+            csvText = csvText.Substring(1);
+            
         string[] lines = csvText.Split('\n');
         
         if (lines.Length <= 1)
@@ -187,6 +248,7 @@ public class PropertyLoader : MonoBehaviour
             
             // Create properties dictionary based on enabled columns
             Dictionary<string, string> properties = new Dictionary<string, string>();
+            Dictionary<string, int> displayOrders = new Dictionary<string, int>();
             
             // Process all columns based on settings
             for (int colIndex = 0; colIndex < columnSettings.Count && colIndex < values.Length; colIndex++)
@@ -196,11 +258,21 @@ public class PropertyLoader : MonoBehaviour
                 if (setting.enabled && colIndex < values.Length)
                 {
                     string value = values[colIndex].Trim().Trim('"');
-                    properties[setting.columnName] = value;
+                    
+                    // Clean the column name for display (same cleaning as headers)
+                    string cleanColumnName = setting.columnName;
+                    if (cleanColumnName.Length > 0 && cleanColumnName[0] == '\uFEFF')
+                        cleanColumnName = cleanColumnName.Substring(1);
+                    cleanColumnName = cleanColumnName.Replace('\u00A0', ' ').Replace('\u2000', ' ')
+                                                   .Replace('\u2001', ' ').Replace('\u2002', ' ')
+                                                   .Replace('\u2003', ' ').Trim();
+                    
+                    properties[cleanColumnName] = value;
+                    displayOrders[cleanColumnName] = setting.displayOrder;
                 }
             }
             
-            AttachPropertiesToObjects(familyType, properties);
+            AttachPropertiesToObjects(familyType, properties, displayOrders);
         }
         
         if (showDebugLog)
@@ -209,7 +281,7 @@ public class PropertyLoader : MonoBehaviour
         }
     }
     
-    void AttachPropertiesToObjects(string familyType, Dictionary<string, string> properties)
+    void AttachPropertiesToObjects(string familyType, Dictionary<string, string> properties, Dictionary<string, int> displayOrders)
     {
         // Find the FullScaleModel object first
         GameObject fullScaleModel = GameObject.Find("FullScaleModel");
@@ -244,7 +316,15 @@ public class PropertyLoader : MonoBehaviour
                     data = obj.AddComponent<RevitData>();
                 }
                 
-                data.SetProperties(properties);
+                data.SetProperties(properties, displayOrders, new HierarchySettings
+                {
+                    showSubstructure = showSubstructure,
+                    substructureOrder = substructureOrder,
+                    showElement = showElement,
+                    elementOrder = elementOrder,
+                    showObjectID = showObjectID,
+                    objectIDOrder = objectIDOrder
+                });
                 
                 if (showDebugLog)
                 {

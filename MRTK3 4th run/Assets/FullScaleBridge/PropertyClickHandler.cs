@@ -3,6 +3,8 @@ using TMPro;
 using UnityEngine.Events;
 using System.Reflection;
 using System;
+using System.Collections.Generic;
+using System.Linq;
 
 public class PropertyClickHandler_MRTK3 : MonoBehaviour
 {
@@ -244,27 +246,12 @@ public class PropertyClickHandler_MRTK3 : MonoBehaviour
             // Show the panel
             propertyPanel.SetActive(true);
         
-            // Get parent and grandparent names
-            string parentName = "None";
-            string grandparentName = "None";
+            // Get all properties in display order (including hierarchy info)
+            List<PropertyPair> displayProperties = data.GetDisplayProperties(clickedObject);
         
-            if (clickedObject.transform.parent != null)
-            {
-                parentName = clickedObject.transform.parent.name;
-            
-                if (clickedObject.transform.parent.parent != null)
-                {
-                    grandparentName = clickedObject.transform.parent.parent.name;
-                }
-            }
-        
-            // Format the property text with hierarchy info
-            string displayText = $"<b>Substructure:</b> {grandparentName}\n";
-            displayText += $"<b>Element:</b> {parentName}\n";
-            displayText += $"<b>Object ID:</b> {clickedObject.name}\n";
-        
-            // NEW: Display all properties dynamically
-            foreach (var property in data.properties)
+            // Build the display text
+            string displayText = "";
+            foreach (var property in displayProperties)
             {
                 displayText += $"<b>{property.key}:</b> {property.value}\n";
             }

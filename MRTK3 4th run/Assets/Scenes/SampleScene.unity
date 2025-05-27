@@ -2699,98 +2699,135 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   csvFile: {fileID: 4900000, guid: ba00c3bffe73c68449591a9a15ddc7d1, type: 3}
+  showSubstructure: 0
+  substructureOrder: -3
+  showElement: 0
+  elementOrder: -2
+  showObjectID: 0
+  objectIDOrder: -1
   columnSettings:
-  - columnName: "\uFEFFelement_nr"
-    enabled: 0
+  - columnName: "\uFEFFInfO ID"
+    enabled: 1
     previewData: AME_CE
+    displayOrder: 2
   - columnName: structure_id
     enabled: 0
     previewData: 4f5267a3-ad22-6c4b-a8d1-f5f979...
+    displayOrder: 0
   - columnName: structure_nr
     enabled: 0
     previewData: 09P006-D
+    displayOrder: 0
   - columnName: Structure
     enabled: 1
     previewData: "Pont\_sur\_La\_Sorge\_-\_Droite"
+    displayOrder: 0
   - columnName: structure_cs
     enabled: 0
     previewData: 2
+    displayOrder: 0
   - columnName: structure_inspection_date
     enabled: 0
     previewData: 43601
+    displayOrder: 0
   - columnName: Construction year
     enabled: 1
     previewData: 1973
+    displayOrder: 3
   - columnName: element_id
     enabled: 0
     previewData: 1a30623c-c3d5-7044-aee9-91d8ab...
+    displayOrder: 0
   - columnName: InfO
     enabled: 1
     previewData: "Ame\_centrale"
+    displayOrder: 1
   - columnName: element_type_nr
     enabled: 0
     previewData: 3814
+    displayOrder: 0
   - columnName: element_type_name
     enabled: 0
     previewData: Steg
+    displayOrder: 0
   - columnName: element_bauart_nr
     enabled: 0
     previewData: 1123
+    displayOrder: 0
   - columnName: element_bauart_name
     enabled: 0
     previewData: Stahlbetonkonstruktion
+    displayOrder: 0
   - columnName: element_cs
     enabled: 0
     previewData: 2
+    displayOrder: 0
   - columnName: Last inspection
     enabled: 1
     previewData: 26.06.2019
+    displayOrder: 4
   - columnName: element_extent
     enabled: 0
     previewData: 795
+    displayOrder: 0
   - columnName: element_extent_unit
     enabled: 0
     previewData: "m\xB2"
+    displayOrder: 0
   - columnName: element_construction_year
     enabled: 0
     previewData: 0
+    displayOrder: 0
   - columnName: element_cost_relevant
     enabled: 0
     previewData: TRUE
+    displayOrder: 0
   - columnName: structure_of_element_relevant
     enabled: 0
     previewData: TRUE
+    displayOrder: 0
   - columnName: element_cs_approx
     enabled: 0
     previewData: 2
+    displayOrder: 0
   - columnName: element_typ_general_nr
     enabled: 0
     previewData: 10
+    displayOrder: 0
   - columnName: element_dmg_process
     enabled: 0
     previewData: 10
+    displayOrder: 0
   - columnName: element_dmg_process_scenario
     enabled: 0
     previewData: neutral
+    displayOrder: 0
   - columnName: element_expected_lifetime
     enabled: 0
     previewData: 80
+    displayOrder: 0
   - columnName: element_repair_amounts
     enabled: 0
     previewData: 4
+    displayOrder: 0
   - columnName: element_iv_strategy
     enabled: 0
     previewData: 3
+    displayOrder: 0
   - columnName: element_det_speed_increase
     enabled: 0
     previewData: 0.05
+    displayOrder: 0
   - columnName: element_has_no_error
     enabled: 0
     previewData: TRUE
+    displayOrder: 0
   - columnName: element_is_used
     enabled: 0
     previewData: TRUE
+    displayOrder: 0
   refreshColumns: 0
+  sortByOrder: 0
   showDebugLog: 1
 --- !u!114 &1849552043
 MonoBehaviour:
