@@ -63,7 +63,9 @@ public class PropertyLoader : MonoBehaviour
             return;
         }
         
-        string[] lines = csvFile.text.Split('\n');
+        // Try to read with UTF-8 encoding to handle accents and special characters
+        string csvText = System.Text.Encoding.UTF8.GetString(csvFile.bytes);
+        string[] lines = csvText.Split('\n');
         
         if (showDebugLog)
         {
@@ -151,7 +153,9 @@ public class PropertyLoader : MonoBehaviour
             return;
         }
         
-        string[] lines = csvFile.text.Split('\n');
+        // Try to read with UTF-8 encoding to handle accents and special characters
+        string csvText = System.Text.Encoding.UTF8.GetString(csvFile.bytes);
+        string[] lines = csvText.Split('\n');
         
         if (lines.Length <= 1)
         {
