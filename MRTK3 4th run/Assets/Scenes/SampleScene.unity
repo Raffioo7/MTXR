@@ -1141,6 +1141,10 @@ PrefabInstance:
       value: 1801810542
       objectReference: {fileID: 0}
     - target: {fileID: 1379536339617406536, guid: 2c4cecf25adbc2f4c88bc2752a9c3264, type: 3}
+      propertyPath: m_text
+      value: Inspection Menu
+      objectReference: {fileID: 0}
+    - target: {fileID: 1379536339617406536, guid: 2c4cecf25adbc2f4c88bc2752a9c3264, type: 3}
       propertyPath: 'm_ActiveFontFeatures.Array.data[0]'
       value: 1801810542
       objectReference: {fileID: 0}
@@ -2694,7 +2698,99 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 8686f1ca925bf994f8f84c6974e4ed57, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  csvFile: {fileID: 4900000, guid: 205ca5505b65f724fb7706bcbc145a48, type: 3}
+  csvFile: {fileID: 4900000, guid: ba00c3bffe73c68449591a9a15ddc7d1, type: 3}
+  columnSettings:
+  - columnName: element_nr
+    enabled: 1
+    previewData: AME_CE
+  - columnName: structure_id
+    enabled: 0
+    previewData: 4f5267a3-ad22-6c4b-a8d1-f5f979...
+  - columnName: structure_nr
+    enabled: 0
+    previewData: 09P006-D
+  - columnName: structure_name
+    enabled: 0
+    previewData: "Pont\uFFFDsur\uFFFDLa\uFFFDSorge\uFFFD-\uFFFDDroite"
+  - columnName: structure_cs
+    enabled: 0
+    previewData: 2
+  - columnName: structure_inspection_date
+    enabled: 0
+    previewData: 43601
+  - columnName: structure_construction_year
+    enabled: 1
+    previewData: 1973
+  - columnName: element_id
+    enabled: 0
+    previewData: 1a30623c-c3d5-7044-aee9-91d8ab...
+  - columnName: element_name
+    enabled: 0
+    previewData: "Ame\uFFFDcentrale"
+  - columnName: element_type_nr
+    enabled: 0
+    previewData: 3814
+  - columnName: element_type_name
+    enabled: 1
+    previewData: Steg
+  - columnName: element_bauart_nr
+    enabled: 0
+    previewData: 1123
+  - columnName: element_bauart_name
+    enabled: 0
+    previewData: Stahlbetonkonstruktion
+  - columnName: element_cs
+    enabled: 0
+    previewData: 2
+  - columnName: element_inspection_date
+    enabled: 1
+    previewData: 26.06.2019
+  - columnName: element_extent
+    enabled: 1
+    previewData: 795
+  - columnName: element_extent_unit
+    enabled: 1
+    previewData: "m\uFFFD"
+  - columnName: element_construction_year
+    enabled: 0
+    previewData: 0
+  - columnName: element_cost_relevant
+    enabled: 0
+    previewData: TRUE
+  - columnName: structure_of_element_relevant
+    enabled: 0
+    previewData: TRUE
+  - columnName: element_cs_approx
+    enabled: 0
+    previewData: 2
+  - columnName: element_typ_general_nr
+    enabled: 0
+    previewData: 10
+  - columnName: element_dmg_process
+    enabled: 0
+    previewData: 10
+  - columnName: element_dmg_process_scenario
+    enabled: 0
+    previewData: neutral
+  - columnName: element_expected_lifetime
+    enabled: 0
+    previewData: 80
+  - columnName: element_repair_amounts
+    enabled: 0
+    previewData: 4
+  - columnName: element_iv_strategy
+    enabled: 0
+    previewData: 3
+  - columnName: element_det_speed_increase
+    enabled: 0
+    previewData: 0.05
+  - columnName: element_has_no_error
+    enabled: 0
+    previewData: TRUE
+  - columnName: element_is_used
+    enabled: 0
+    previewData: TRUE
+  refreshColumns: 0
   showDebugLog: 1
 --- !u!114 &1849552043
 MonoBehaviour:

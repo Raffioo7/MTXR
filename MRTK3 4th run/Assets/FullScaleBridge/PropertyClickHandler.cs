@@ -243,30 +243,37 @@ public class PropertyClickHandler_MRTK3 : MonoBehaviour
         {
             // Show the panel
             propertyPanel.SetActive(true);
-            
+        
             // Get parent and grandparent names
             string parentName = "None";
             string grandparentName = "None";
-            
+        
             if (clickedObject.transform.parent != null)
             {
                 parentName = clickedObject.transform.parent.name;
-                
+            
                 if (clickedObject.transform.parent.parent != null)
                 {
                     grandparentName = clickedObject.transform.parent.parent.name;
                 }
             }
-            
+        
             // Format the property text with hierarchy info
             string displayText = $"<b>Substructure:</b> {grandparentName}\n";
             displayText += $"<b>Element:</b> {parentName}\n";
             displayText += $"<b>Object ID:</b> {clickedObject.name}\n";
-            displayText += $"<b>Family Type:</b> {data.familyType}\n";
-            displayText += $"<b>Year:</b> {data.year}";
-            
+        
+            // NEW: Display all properties dynamically
+            foreach (var property in data.properties)
+            {
+                displayText += $"<b>{property.key}:</b> {property.value}\n";
+            }
+        
+            // Remove the last newline
+            displayText = displayText.TrimEnd('\n');
+        
             propertyDisplay.text = displayText;
-            
+        
             if (debugMode)
                 Debug.Log($"Showing properties for {clickedObject.name}");
         }
