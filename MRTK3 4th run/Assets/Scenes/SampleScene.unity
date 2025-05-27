@@ -2700,8 +2700,8 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   csvFile: {fileID: 4900000, guid: ba00c3bffe73c68449591a9a15ddc7d1, type: 3}
   columnSettings:
-  - columnName: element_nr
-    enabled: 1
+  - columnName: "\uFEFFelement_nr"
+    enabled: 0
     previewData: AME_CE
   - columnName: structure_id
     enabled: 0
@@ -2709,29 +2709,29 @@ MonoBehaviour:
   - columnName: structure_nr
     enabled: 0
     previewData: 09P006-D
-  - columnName: structure_name
-    enabled: 0
-    previewData: "Pont\uFFFDsur\uFFFDLa\uFFFDSorge\uFFFD-\uFFFDDroite"
+  - columnName: Structure
+    enabled: 1
+    previewData: "Pont\_sur\_La\_Sorge\_-\_Droite"
   - columnName: structure_cs
     enabled: 0
     previewData: 2
   - columnName: structure_inspection_date
     enabled: 0
     previewData: 43601
-  - columnName: structure_construction_year
+  - columnName: Construction year
     enabled: 1
     previewData: 1973
   - columnName: element_id
     enabled: 0
     previewData: 1a30623c-c3d5-7044-aee9-91d8ab...
-  - columnName: element_name
-    enabled: 0
-    previewData: "Ame\uFFFDcentrale"
+  - columnName: InfO
+    enabled: 1
+    previewData: "Ame\_centrale"
   - columnName: element_type_nr
     enabled: 0
     previewData: 3814
   - columnName: element_type_name
-    enabled: 1
+    enabled: 0
     previewData: Steg
   - columnName: element_bauart_nr
     enabled: 0
@@ -2742,15 +2742,15 @@ MonoBehaviour:
   - columnName: element_cs
     enabled: 0
     previewData: 2
-  - columnName: element_inspection_date
+  - columnName: Last inspection
     enabled: 1
     previewData: 26.06.2019
   - columnName: element_extent
-    enabled: 1
+    enabled: 0
     previewData: 795
   - columnName: element_extent_unit
-    enabled: 1
-    previewData: "m\uFFFD"
+    enabled: 0
+    previewData: "m\xB2"
   - columnName: element_construction_year
     enabled: 0
     previewData: 0
