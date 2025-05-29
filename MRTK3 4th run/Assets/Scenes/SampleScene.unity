@@ -3885,6 +3885,7 @@ MonoBehaviour:
   propertyPanel: {fileID: 554016655}
   propertyDisplay: {fileID: 891014815}
   unhighlightButton: {fileID: 142360864}
+  secondButton: {fileID: 2071377576}
   clickableLayerMask:
     serializedVersion: 2
     m_Bits: 4294967295
@@ -4343,6 +4344,11 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   autoConstraintSelection: 1
   selectedConstraints: []
+--- !u!1 &2071377576 stripped
+GameObject:
+  m_CorrespondingSourceObject: {fileID: 2244185731031694095, guid: cd0f0697f0939504389ec612388f609a, type: 3}
+  m_PrefabInstance: {fileID: 1664330987}
+  m_PrefabAsset: {fileID: 0}
 --- !u!4 &2071377577 stripped
 Transform:
   m_CorrespondingSourceObject: {fileID: 2244185731585867246, guid: cd0f0697f0939504389ec612388f609a, type: 3}
@@ -4353,7 +4359,7 @@ MonoBehaviour:
   m_CorrespondingSourceObject: {fileID: 1503546110793399400, guid: cd0f0697f0939504389ec612388f609a, type: 3}
   m_PrefabInstance: {fileID: 1664330987}
   m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 0}
+  m_GameObject: {fileID: 2071377576}
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: c32e8a7644144f8419bb881ad588ed0e, type: 3}
