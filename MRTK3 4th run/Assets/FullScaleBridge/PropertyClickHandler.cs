@@ -11,6 +11,7 @@ public class PropertyClickHandler_MRTK3 : MonoBehaviour
     [Header("UI References")]
     public GameObject propertyPanel;
     public TextMeshProUGUI propertyDisplay;
+    public GameObject unhighlightButton; // Add reference to your MRTK3 button GameObject
     
     [Header("Settings")]
     public LayerMask clickableLayerMask = -1; // All layers
@@ -32,8 +33,81 @@ public class PropertyClickHandler_MRTK3 : MonoBehaviour
         if (propertyPanel != null)
             propertyPanel.SetActive(false);
             
+        // Hide unhighlight button initially and set up MRTK3 interaction
+        if (unhighlightButton != null)
+        {
+            unhighlightButton.SetActive(false);
+            // Set up MRTK3 button interaction
+            SetupUnhighlightButton();
+        }
+            
         // Set up MRTK3 interactables on all objects with RevitData
         SetupInteractables();
+    }
+    
+    void SetupUnhighlightButton()
+    {
+        if (unhighlightButton == null) return;
+        
+        // Get the MRTK3 StatefulInteractable component from the button
+        Component buttonInteractable = unhighlightButton.GetComponent("StatefulInteractable");
+        if (buttonInteractable != null)
+        {
+            bool subscribed = TrySubscribeToButtonClickEvent(buttonInteractable);
+            
+            if (debugMode)
+            {
+                if (subscribed)
+                    Debug.Log("Successfully subscribed to unhighlight button click event");
+                else
+                    Debug.LogWarning("Failed to subscribe to unhighlight button click event");
+            }
+        }
+        else if (debugMode)
+        {
+            Debug.LogWarning("No StatefulInteractable found on unhighlight button");
+        }
+    }
+    
+    bool TrySubscribeToButtonClickEvent(Component interactable)
+    {
+        Type interactableType = interactable.GetType();
+        
+        // Try different possible event names for MRTK3 buttons
+        string[] possibleEventNames = { "OnClicked", "onClicked", "Clicked", "clicked" };
+        
+        foreach (string eventName in possibleEventNames)
+        {
+            // Try as field
+            FieldInfo fieldInfo = interactableType.GetField(eventName);
+            if (fieldInfo != null)
+            {
+                var eventValue = fieldInfo.GetValue(interactable) as UnityEvent;
+                if (eventValue != null)
+                {
+                    eventValue.AddListener(UnhighlightSelected);
+                    if (debugMode)
+                        Debug.Log($"Successfully subscribed to button {eventName} field");
+                    return true;
+                }
+            }
+            
+            // Try as property
+            PropertyInfo propertyInfo = interactableType.GetProperty(eventName);
+            if (propertyInfo != null)
+            {
+                var eventValue = propertyInfo.GetValue(interactable) as UnityEvent;
+                if (eventValue != null)
+                {
+                    eventValue.AddListener(UnhighlightSelected);
+                    if (debugMode)
+                        Debug.Log($"Successfully subscribed to button {eventName} property");
+                    return true;
+                }
+            }
+        }
+        
+        return false;
     }
     
     void SetupInteractables()
@@ -174,6 +248,7 @@ public class PropertyClickHandler_MRTK3 : MonoBehaviour
         currentlySelected = clickedObject;
         HighlightObject(clickedObject);
         ShowProperties(data, clickedObject);
+        ShowUnhighlightButton(); // Show the button when an object is selected
     }
     
     void HighlightObject(GameObject obj)
@@ -237,6 +312,7 @@ public class PropertyClickHandler_MRTK3 : MonoBehaviour
         }
         
         HidePropertyPanel();
+        HideUnhighlightButton(); // Hide the button when selection is cleared
     }
     
     void ShowProperties(RevitData data, GameObject clickedObject)
@@ -274,10 +350,52 @@ public class PropertyClickHandler_MRTK3 : MonoBehaviour
         }
     }
     
+    // NEW METHODS FOR BUTTON FUNCTIONALITY
+    void ShowUnhighlightButton()
+    {
+        if (unhighlightButton != null)
+        {
+            unhighlightButton.SetActive(true);
+            
+            if (debugMode)
+                Debug.Log("Unhighlight button shown");
+        }
+    }
+    
+    void HideUnhighlightButton()
+    {
+        if (unhighlightButton != null)
+        {
+            unhighlightButton.SetActive(false);
+            
+            if (debugMode)
+                Debug.Log("Unhighlight button hidden");
+        }
+    }
+    
+    // Public method that will be called by the button
+    public void UnhighlightSelected()
+    {
+        if (debugMode)
+            Debug.Log("Unhighlight button pressed");
+            
+        ClearSelection();
+    }
+    
     void OnDestroy()
     {
         // Clean up any remaining highlight materials
         ClearSelection();
+        
+        // Remove button listener if it exists
+        if (unhighlightButton != null)
+        {
+            Component buttonInteractable = unhighlightButton.GetComponent("StatefulInteractable");
+            if (buttonInteractable != null)
+            {
+                UnsubscribeFromButtonClickEvent(buttonInteractable);
+            }
+        }
         
         // Unsubscribe from events
         RevitData[] revitObjects = FindObjectsOfType<RevitData>();
@@ -287,6 +405,39 @@ public class PropertyClickHandler_MRTK3 : MonoBehaviour
             if (interactable != null)
             {
                 UnsubscribeFromClickEvent(interactable);
+            }
+        }
+    }
+    
+    void UnsubscribeFromButtonClickEvent(Component interactable)
+    {
+        Type interactableType = interactable.GetType();
+        string[] possibleEventNames = { "OnClicked", "onClicked", "Clicked", "clicked" };
+        
+        foreach (string eventName in possibleEventNames)
+        {
+            // Try as field
+            FieldInfo fieldInfo = interactableType.GetField(eventName);
+            if (fieldInfo != null)
+            {
+                var eventValue = fieldInfo.GetValue(interactable) as UnityEvent;
+                if (eventValue != null)
+                {
+                    eventValue.RemoveListener(UnhighlightSelected);
+                    return;
+                }
+            }
+            
+            // Try as property
+            PropertyInfo propertyInfo = interactableType.GetProperty(eventName);
+            if (propertyInfo != null)
+            {
+                var eventValue = propertyInfo.GetValue(interactable) as UnityEvent;
+                if (eventValue != null)
+                {
+                    eventValue.RemoveListener(UnhighlightSelected);
+                    return;
+                }
             }
         }
     }
