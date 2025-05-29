@@ -13,6 +13,7 @@ public class PropertyClickHandler_MRTK3 : MonoBehaviour
     public TextMeshProUGUI propertyDisplay;
     public GameObject unhighlightButton; // Add reference to your MRTK3 button GameObject
     public GameObject secondButton; // Add reference to your second MRTK3 button GameObject
+    public GameObject thirdButton; // Add reference to your third MRTK3 button GameObject
     
     [Header("Settings")]
     public LayerMask clickableLayerMask = -1; // All layers
@@ -48,6 +49,14 @@ public class PropertyClickHandler_MRTK3 : MonoBehaviour
             secondButton.SetActive(false);
             // Set up MRTK3 second button interaction
             SetupSecondButton();
+        }
+        
+        // Hide third button initially and set up MRTK3 interaction
+        if (thirdButton != null)
+        {
+            thirdButton.SetActive(false);
+            // Set up MRTK3 third button interaction
+            SetupThirdButton();
         }
             
         // Set up MRTK3 interactables on all objects with RevitData
@@ -176,6 +185,71 @@ public class PropertyClickHandler_MRTK3 : MonoBehaviour
                     eventValue.AddListener(OnSecondButtonClicked);
                     if (debugMode)
                         Debug.Log($"Successfully subscribed to second button {eventName} property");
+                    return true;
+                }
+            }
+        }
+        
+        return false;
+    }
+    
+    void SetupThirdButton()
+    {
+        if (thirdButton == null) return;
+        
+        // Get the MRTK3 StatefulInteractable component from the third button
+        Component buttonInteractable = thirdButton.GetComponent("StatefulInteractable");
+        if (buttonInteractable != null)
+        {
+            bool subscribed = TrySubscribeToThirdButtonClickEvent(buttonInteractable);
+            
+            if (debugMode)
+            {
+                if (subscribed)
+                    Debug.Log("Successfully subscribed to third button click event");
+                else
+                    Debug.LogWarning("Failed to subscribe to third button click event");
+            }
+        }
+        else if (debugMode)
+        {
+            Debug.LogWarning("No StatefulInteractable found on third button");
+        }
+    }
+    
+    bool TrySubscribeToThirdButtonClickEvent(Component interactable)
+    {
+        Type interactableType = interactable.GetType();
+        
+        // Try different possible event names for MRTK3 buttons
+        string[] possibleEventNames = { "OnClicked", "onClicked", "Clicked", "clicked" };
+        
+        foreach (string eventName in possibleEventNames)
+        {
+            // Try as field
+            FieldInfo fieldInfo = interactableType.GetField(eventName);
+            if (fieldInfo != null)
+            {
+                var eventValue = fieldInfo.GetValue(interactable) as UnityEvent;
+                if (eventValue != null)
+                {
+                    eventValue.AddListener(OnThirdButtonClicked);
+                    if (debugMode)
+                        Debug.Log($"Successfully subscribed to third button {eventName} field");
+                    return true;
+                }
+            }
+            
+            // Try as property
+            PropertyInfo propertyInfo = interactableType.GetProperty(eventName);
+            if (propertyInfo != null)
+            {
+                var eventValue = propertyInfo.GetValue(interactable) as UnityEvent;
+                if (eventValue != null)
+                {
+                    eventValue.AddListener(OnThirdButtonClicked);
+                    if (debugMode)
+                        Debug.Log($"Successfully subscribed to third button {eventName} property");
                     return true;
                 }
             }
@@ -324,6 +398,7 @@ public class PropertyClickHandler_MRTK3 : MonoBehaviour
         ShowProperties(data, clickedObject);
         ShowUnhighlightButton(); // Show the button when an object is selected
         ShowSecondButton(); // Show the second button when an object is selected
+        ShowThirdButton(); // Show the third button when an object is selected
     }
     
     void HighlightObject(GameObject obj)
@@ -389,6 +464,7 @@ public class PropertyClickHandler_MRTK3 : MonoBehaviour
         HidePropertyPanel();
         HideUnhighlightButton(); // Hide the button when selection is cleared
         HideSecondButton(); // Hide the second button when selection is cleared
+        HideThirdButton(); // Hide the third button when selection is cleared
     }
     
     void ShowProperties(RevitData data, GameObject clickedObject)
@@ -470,6 +546,28 @@ public class PropertyClickHandler_MRTK3 : MonoBehaviour
         }
     }
     
+    void ShowThirdButton()
+    {
+        if (thirdButton != null)
+        {
+            thirdButton.SetActive(true);
+            
+            if (debugMode)
+                Debug.Log("Third button shown");
+        }
+    }
+    
+    void HideThirdButton()
+    {
+        if (thirdButton != null)
+        {
+            thirdButton.SetActive(false);
+            
+            if (debugMode)
+                Debug.Log("Third button hidden");
+        }
+    }
+    
     // Public method that will be called by the unhighlight button
     public void UnhighlightSelected()
     {
@@ -484,6 +582,16 @@ public class PropertyClickHandler_MRTK3 : MonoBehaviour
     {
         if (debugMode)
             Debug.Log("Second button pressed");
+            
+        // Add your custom functionality here
+        // This button doesn't affect highlighting, just add whatever you want it to do
+    }
+    
+    // Public method that will be called by the third button
+    public void OnThirdButtonClicked()
+    {
+        if (debugMode)
+            Debug.Log("Third button pressed");
             
         // Add your custom functionality here
         // This button doesn't affect highlighting, just add whatever you want it to do
@@ -511,6 +619,16 @@ public class PropertyClickHandler_MRTK3 : MonoBehaviour
             if (buttonInteractable != null)
             {
                 UnsubscribeFromSecondButtonClickEvent(buttonInteractable);
+            }
+        }
+        
+        // Remove third button listener if it exists
+        if (thirdButton != null)
+        {
+            Component buttonInteractable = thirdButton.GetComponent("StatefulInteractable");
+            if (buttonInteractable != null)
+            {
+                UnsubscribeFromThirdButtonClickEvent(buttonInteractable);
             }
         }
         
@@ -586,6 +704,39 @@ public class PropertyClickHandler_MRTK3 : MonoBehaviour
                 if (eventValue != null)
                 {
                     eventValue.RemoveListener(OnSecondButtonClicked);
+                    return;
+                }
+            }
+        }
+    }
+    
+    void UnsubscribeFromThirdButtonClickEvent(Component interactable)
+    {
+        Type interactableType = interactable.GetType();
+        string[] possibleEventNames = { "OnClicked", "onClicked", "Clicked", "clicked" };
+        
+        foreach (string eventName in possibleEventNames)
+        {
+            // Try as field
+            FieldInfo fieldInfo = interactableType.GetField(eventName);
+            if (fieldInfo != null)
+            {
+                var eventValue = fieldInfo.GetValue(interactable) as UnityEvent;
+                if (eventValue != null)
+                {
+                    eventValue.RemoveListener(OnThirdButtonClicked);
+                    return;
+                }
+            }
+            
+            // Try as property
+            PropertyInfo propertyInfo = interactableType.GetProperty(eventName);
+            if (propertyInfo != null)
+            {
+                var eventValue = propertyInfo.GetValue(interactable) as UnityEvent;
+                if (eventValue != null)
+                {
+                    eventValue.RemoveListener(OnThirdButtonClicked);
                     return;
                 }
             }
