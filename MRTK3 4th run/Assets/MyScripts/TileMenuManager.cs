@@ -27,6 +27,12 @@ public class TileMenuManager : MonoBehaviour
     [SerializeField] private float tileHeight = 0.08f; // Manual tile height for absolute positioning
     [SerializeField] private float verticalStartOffset = 0f; // Vertical offset for where tiles start generating
     
+    [Header("Clipping Settings")]
+    [SerializeField] private bool enableBoundsClipping = true; // Enable/disable bounds checking
+    [SerializeField] private Transform clippingBounds; // Reference object that defines the clipping area
+    [SerializeField] private Vector3 clippingSize = new Vector3(1f, 1f, 1f); // Size of clipping area if no reference object
+    [SerializeField] private Vector3 clippingCenter = Vector3.zero; // Center offset for clipping area
+    
     [Header("Runtime Preview")]
     [SerializeField] private bool autoRefresh = true; // Auto refresh when values change
     [SerializeField] private bool refreshNow = false; // Button to manually refresh
@@ -42,6 +48,9 @@ public class TileMenuManager : MonoBehaviour
     private float prevTileWidth;
     private float prevTileHeight;
     private float prevVerticalStartOffset;
+    private bool prevEnableBoundsClipping;
+    private Vector3 prevClippingSize;
+    private Vector3 prevClippingCenter;
     
     [System.Serializable]
     public class TileData
@@ -83,6 +92,12 @@ public class TileMenuManager : MonoBehaviour
                 StoreCurrentValues();
             }
         }
+        
+        // Update tile visibility based on bounds clipping
+        if (enableBoundsClipping && tileMenuPanel != null && tileMenuPanel.activeSelf)
+        {
+            UpdateTileVisibility();
+        }
     }
     
     void OnValidate()
@@ -103,7 +118,10 @@ public class TileMenuManager : MonoBehaviour
                useAbsolutePositioning != prevUseAbsolutePositioning ||
                tileWidth != prevTileWidth ||
                tileHeight != prevTileHeight ||
-               verticalStartOffset != prevVerticalStartOffset;
+               verticalStartOffset != prevVerticalStartOffset ||
+               enableBoundsClipping != prevEnableBoundsClipping ||
+               clippingSize != prevClippingSize ||
+               clippingCenter != prevClippingCenter;
     }
     
     void StoreCurrentValues()
@@ -115,6 +133,9 @@ public class TileMenuManager : MonoBehaviour
         prevTileWidth = tileWidth;
         prevTileHeight = tileHeight;
         prevVerticalStartOffset = verticalStartOffset;
+        prevEnableBoundsClipping = enableBoundsClipping;
+        prevClippingSize = clippingSize;
+        prevClippingCenter = clippingCenter;
     }
     
     void RefreshTileLayout()
@@ -447,6 +468,121 @@ public class TileMenuManager : MonoBehaviour
         {
             ClearTiles();
             GenerateTiles();
+        }
+    }
+    
+    // Bounds clipping methods
+    void UpdateTileVisibility()
+    {
+        if (!enableBoundsClipping) return;
+        
+        Bounds clipBounds = GetClippingBounds();
+        
+        foreach (GameObject tile in spawnedTiles)
+        {
+            if (tile != null)
+            {
+                bool shouldBeVisible = IsTileInBounds(tile, clipBounds);
+                
+                // Only change visibility if it's different to avoid unnecessary calls
+                if (tile.activeSelf != shouldBeVisible)
+                {
+                    tile.SetActive(shouldBeVisible);
+                }
+            }
+        }
+    }
+    
+    Bounds GetClippingBounds()
+    {
+        Vector3 center;
+        Vector3 size;
+        
+        if (clippingBounds != null)
+        {
+            // Use the referenced transform's bounds
+            center = clippingBounds.position + clippingCenter;
+            
+            // Try to get bounds from a collider first
+            Collider boundsCollider = clippingBounds.GetComponent<Collider>();
+            if (boundsCollider != null)
+            {
+                size = boundsCollider.bounds.size;
+            }
+            else
+            {
+                // Use the transform's scale or lossyScale as size
+                size = Vector3.Scale(clippingSize, clippingBounds.lossyScale);
+            }
+        }
+        else
+        {
+            // Use manual settings relative to tile container
+            center = tileContainer.position + clippingCenter;
+            size = clippingSize;
+        }
+        
+        return new Bounds(center, size);
+    }
+    
+    bool IsTileInBounds(GameObject tile, Bounds bounds)
+    {
+        // Get the tile's world position
+        Vector3 tilePosition = tile.transform.position;
+        
+        // You can also check if the tile's bounds overlap with clipping bounds
+        // For more precise checking, uncomment below:
+        /*
+        Bounds tileBounds = GetTileBounds(tile);
+        return bounds.Intersects(tileBounds);
+        */
+        
+        // Simple point-in-bounds check
+        return bounds.Contains(tilePosition);
+    }
+    
+    // Optional: More precise bounds checking for tiles
+    Bounds GetTileBounds(GameObject tile)
+    {
+        Bounds tileBounds = new Bounds(tile.transform.position, Vector3.zero);
+        
+        // Get all renderers to calculate total bounds
+        Renderer[] renderers = tile.GetComponentsInChildren<Renderer>();
+        foreach (Renderer renderer in renderers)
+        {
+            tileBounds.Encapsulate(renderer.bounds);
+        }
+        
+        // If no renderers found, use a default size
+        if (renderers.Length == 0)
+        {
+            tileBounds.size = new Vector3(0.1f, 0.1f, 0.1f);
+        }
+        
+        return tileBounds;
+    }
+    
+    // Public method to manually update visibility (useful for scrolling)
+    public void UpdateClipping()
+    {
+        if (enableBoundsClipping)
+        {
+            UpdateTileVisibility();
+        }
+    }
+    
+    // Debug method to visualize clipping bounds in Scene view
+    void OnDrawGizmosSelected()
+    {
+        if (enableBoundsClipping && Application.isPlaying)
+        {
+            Bounds clipBounds = GetClippingBounds();
+            
+            Gizmos.color = Color.yellow;
+            Gizmos.DrawWireCube(clipBounds.center, clipBounds.size);
+            
+            Gizmos.color = new Color(1f, 1f, 0f, 0.1f);
+            Gizmos.DrawCube(clipBounds.center, clipBounds.size);
         }
     }
 }
