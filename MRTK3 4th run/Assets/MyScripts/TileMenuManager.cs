@@ -4,24 +4,14 @@ using System.IO;
 using UnityEngine;
 using TMPro;
 using MixedReality.Toolkit.UX;
-using MixedReality.Toolkit.Input;
-using Microsoft.MixedReality.Toolkit;
-using UnityEngine.UI;
 
 public class TileMenuManager : MonoBehaviour
 {
     [Header("UI References")]
     [SerializeField] private GameObject tileMenuPanel;
     [SerializeField] private GameObject tilePrefab; // MRTK3 button prefab
-    [SerializeField] private Transform tileContainer; // Parent transform for tiles (inside ScrollView content)
+    [SerializeField] private Transform tileContainer; // Parent transform for tiles
     [SerializeField] private TextMeshProUGUI displayText; // Text to show selected tile
-    
-    [Header("Scroll View Settings")]
-    [SerializeField] private ScrollRect scrollRect; // Unity ScrollRect component
-    [SerializeField] private RectTransform scrollViewContent; // Content RectTransform inside ScrollView
-    [SerializeField] private bool useScrollView = true;
-    [SerializeField] private float scrollViewHeight = 0.4f; // Height of visible scroll area
-    [SerializeField] private bool addScrollHandles = true; // Add MRTK3 scroll handles
     
     [Header("CSV Settings")]
     [SerializeField] private string csvFileName = "tiles.csv";
@@ -35,6 +25,7 @@ public class TileMenuManager : MonoBehaviour
     [SerializeField] private bool useAbsolutePositioning = false; // If true, use tileWidth/Height directly
     [SerializeField] private float tileWidth = 0.32f; // Manual tile width for absolute positioning
     [SerializeField] private float tileHeight = 0.08f; // Manual tile height for absolute positioning
+    [SerializeField] private float verticalStartOffset = 0f; // Vertical offset for where tiles start generating
     
     [Header("Runtime Preview")]
     [SerializeField] private bool autoRefresh = true; // Auto refresh when values change
@@ -42,7 +33,6 @@ public class TileMenuManager : MonoBehaviour
     
     private List<TileData> tileDataList = new List<TileData>();
     private List<GameObject> spawnedTiles = new List<GameObject>();
-    private GameObject scrollViewObject;
     
     // Store previous values to detect changes
     private int prevTilesPerRow;
@@ -51,6 +41,7 @@ public class TileMenuManager : MonoBehaviour
     private bool prevUseAbsolutePositioning;
     private float prevTileWidth;
     private float prevTileHeight;
+    private float prevVerticalStartOffset;
     
     [System.Serializable]
     public class TileData
@@ -69,11 +60,10 @@ public class TileMenuManager : MonoBehaviour
     {
         // Initially hide the panel
         if (tileMenuPanel != null)
+        {
             tileMenuPanel.SetActive(false);
-            
-        // Setup scroll view if needed
-        if (useScrollView)
-            SetupScrollView();
+            isMenuOpen = false;
+        }
             
         // Load CSV data
         LoadCSVData();
@@ -105,81 +95,6 @@ public class TileMenuManager : MonoBehaviour
         }
     }
     
-    void SetupScrollView()
-    {
-        // If scrollRect is not assigned, try to find or create one
-        if (scrollRect == null && tileContainer != null)
-        {
-            scrollRect = tileContainer.GetComponentInParent<ScrollRect>();
-            
-            if (scrollRect == null)
-            {
-                Debug.LogWarning("No ScrollRect found. Please add a ScrollRect component to enable scrolling.");
-                useScrollView = false;
-                return;
-            }
-        }
-        
-        // Get the content RectTransform
-        if (scrollRect != null && scrollViewContent == null)
-        {
-            scrollViewContent = scrollRect.content;
-            if (scrollViewContent == null)
-            {
-                scrollViewContent = tileContainer.GetComponent<RectTransform>();
-                scrollRect.content = scrollViewContent;
-            }
-        }
-        
-        // Setup MRTK3 scroll handling
-        if (addScrollHandles && scrollRect != null)
-        {
-            SetupMRTKScrollHandles();
-        }
-    }
-    
-    void SetupMRTKScrollHandles()
-    {
-        // Add CanvasProxyInteractor if not present (for MRTK3 canvas interaction)
-        CanvasProxyInteractor canvasProxy = scrollRect.GetComponent<CanvasProxyInteractor>();
-        if (canvasProxy == null)
-        {
-            canvasProxy = scrollRect.gameObject.AddComponent<CanvasProxyInteractor>();
-        }
-        
-        // Configure scroll settings for MRTK3
-        scrollRect.horizontal = false; // Usually only want vertical scrolling
-        scrollRect.vertical = true;
-        scrollRect.scrollSensitivity = 30f; // Adjust for comfort
-        scrollRect.inertia = true;
-        scrollRect.decelerationRate = 0.135f;
-        
-        // Add StatefulInteractable for better MRTK3 integration
-        Component interactable = scrollRect.GetComponent("StatefulInteractable");
-        if (interactable == null)
-        {
-            interactable = UnityEngineInternal.APIUpdaterRuntimeServices.AddComponent(scrollRect.gameObject, "Assets/MyScripts/TileMenuManager.cs (161,28)", "StatefulInteractable");
-        }
-        
-        // Make sure the canvas has proper settings for MRTK3
-        Canvas canvas = scrollRect.GetComponentInParent<Canvas>();
-        if (canvas != null)
-        {
-            // Ensure the canvas is set up for world space if needed
-            if (canvas.renderMode != RenderMode.WorldSpace)
-            {
-                Debug.Log("Setting Canvas to WorldSpace for MRTK3 interaction");
-                canvas.renderMode = RenderMode.WorldSpace;
-            }
-            
-            // Add GraphicRaycaster if missing
-            if (canvas.GetComponent<GraphicRaycaster>() == null)
-            {
-                canvas.gameObject.AddComponent<GraphicRaycaster>();
-            }
-        }
-    }
-    
     bool HasValuesChanged()
     {
         return tilesPerRow != prevTilesPerRow ||
@@ -187,7 +102,8 @@ public class TileMenuManager : MonoBehaviour
                tileScale != prevTileScale ||
                useAbsolutePositioning != prevUseAbsolutePositioning ||
                tileWidth != prevTileWidth ||
-               tileHeight != prevTileHeight;
+               tileHeight != prevTileHeight ||
+               verticalStartOffset != prevVerticalStartOffset;
     }
     
     void StoreCurrentValues()
@@ -198,6 +114,7 @@ public class TileMenuManager : MonoBehaviour
         prevUseAbsolutePositioning = useAbsolutePositioning;
         prevTileWidth = tileWidth;
         prevTileHeight = tileHeight;
+        prevVerticalStartOffset = verticalStartOffset;
     }
     
     void RefreshTileLayout()
@@ -290,6 +207,33 @@ public class TileMenuManager : MonoBehaviour
         Debug.Log($"Loaded {tileDataList.Count} tiles from CSV");
     }
     
+    // Track menu state explicitly
+    private bool isMenuOpen = false;
+    
+    // New toggle method that replaces OpenTileMenu
+    public void ToggleTileMenu()
+    {
+        if (tileMenuPanel == null)
+        {
+            Debug.LogError("TileMenuPanel is not assigned!");
+            return;
+        }
+        
+        Debug.Log($"ToggleTileMenu called. Current state - isMenuOpen: {isMenuOpen}, activeSelf: {tileMenuPanel.activeSelf}");
+        
+        // Toggle the panel state using our tracked variable
+        if (isMenuOpen)
+        {
+            Debug.Log("Closing tile menu...");
+            CloseTileMenu();
+        }
+        else
+        {
+            Debug.Log("Opening tile menu...");
+            OpenTileMenu();
+        }
+    }
+    
     public void OpenTileMenu()
     {
         if (tileMenuPanel == null || tilePrefab == null || tileContainer == null)
@@ -304,20 +248,21 @@ public class TileMenuManager : MonoBehaviour
         // Generate new tiles
         GenerateTiles();
         
-        // Show the panel
+        // Show the panel and update state
         tileMenuPanel.SetActive(true);
+        isMenuOpen = true;
         
-        // Reset scroll position
-        if (scrollRect != null)
-        {
-            scrollRect.verticalNormalizedPosition = 1f; // Scroll to top
-        }
+        Debug.Log("Tile menu opened");
     }
     
     public void CloseTileMenu()
     {
         if (tileMenuPanel != null)
+        {
             tileMenuPanel.SetActive(false);
+            isMenuOpen = false;
+            Debug.Log("Tile menu closed");
+        }
     }
     
     void ClearTiles()
@@ -370,52 +315,52 @@ public class TileMenuManager : MonoBehaviour
             }
         }
         
-        // Calculate grid dimensions
-        int totalRows = Mathf.CeilToInt((float)tileDataList.Count / tilesPerRow);
-        float gridHeight = totalRows * totalTileHeight;
-        float gridWidth = tilesPerRow * totalTileWidth;
-        
-        // Update scroll view content size if using scroll
-        if (useScrollView && scrollViewContent != null)
-        {
-            scrollViewContent.sizeDelta = new Vector2(gridWidth, gridHeight);
-            
-            // Ensure the scroll view viewport is set correctly
-            if (scrollRect != null && scrollRect.viewport != null)
-            {
-                RectTransform viewport = scrollRect.viewport;
-                // Keep viewport height as configured
-                viewport.sizeDelta = new Vector2(gridWidth + 0.05f, scrollViewHeight);
-            }
-        }
-        
-        // Center the grid horizontally
-        float startX = -gridWidth / 2f + totalTileWidth / 2f;
-        float startY = gridHeight / 2f - totalTileHeight / 2f;
+        // Center the grid
+        float gridWidth = (tilesPerRow - 1) * totalTileWidth;
+        float startX = -gridWidth / 2f;
         
         for (int i = 0; i < tileDataList.Count; i++)
         {
             // Instantiate tile
             GameObject newTile = Instantiate(tilePrefab, tileContainer);
-            newTile.transform.localScale = tileScale;
+            
+            // Store original transform values before modifying
+            Vector3 originalLocalPosition = newTile.transform.localPosition;
+            Quaternion originalLocalRotation = newTile.transform.localRotation;
+            Vector3 originalLocalScale = newTile.transform.localScale;
+            
+            // Apply scale (only if it's different from the prefab's scale)
+            if (tileScale != Vector3.one)
+            {
+                newTile.transform.localScale = Vector3.Scale(originalLocalScale, tileScale);
+            }
             
             // Position tile in grid
             int row = i / tilesPerRow;
             int col = i % tilesPerRow;
             
             float xPos = startX + (col * totalTileWidth);
-            float yPos = startY - (row * totalTileHeight);
+            float yPos = verticalStartOffset + (-row * totalTileHeight);
             
-            // For UI elements
-            if (newTile.GetComponent<RectTransform>() != null)
+            // For UI elements (RectTransform)
+            RectTransform rt = newTile.GetComponent<RectTransform>();
+            if (rt != null)
             {
-                RectTransform rt = newTile.GetComponent<RectTransform>();
+                // Preserve original anchors and pivot
                 rt.anchoredPosition = new Vector2(xPos, yPos);
+                // Keep the original rotation
+                rt.localRotation = originalLocalRotation;
             }
             else
             {
                 // For 3D objects
-                newTile.transform.localPosition = new Vector3(xPos, yPos, 0);
+                newTile.transform.localPosition = new Vector3(
+                    originalLocalPosition.x + xPos, 
+                    originalLocalPosition.y + yPos, 
+                    originalLocalPosition.z
+                );
+                // Keep the original rotation
+                newTile.transform.localRotation = originalLocalRotation;
             }
             
             // Set tile text
@@ -503,17 +448,5 @@ public class TileMenuManager : MonoBehaviour
             ClearTiles();
             GenerateTiles();
         }
-    }
-    
-    // Public method for manual refresh
-    public void RefreshLayout()
-    {
-        RefreshTileLayout();
-    }
-    
-    // Get current tile count for editor display
-    public int GetTileCount()
-    {
-        return spawnedTiles.Count;
     }
 }

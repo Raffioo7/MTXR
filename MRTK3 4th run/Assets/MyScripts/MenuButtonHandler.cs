@@ -12,8 +12,8 @@ public class MenuButtonHandler : MonoBehaviour
         
         if (button != null && tileMenuManager != null)
         {
-            // Add listener to open the tile menu
-            button.OnClicked.AddListener(() => tileMenuManager.OpenTileMenu());
+            // Add listener to toggle the tile menu (changed from OpenTileMenu to ToggleTileMenu)
+            button.OnClicked.AddListener(() => tileMenuManager.ToggleTileMenu());
         }
         else
         {
