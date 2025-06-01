@@ -840,8 +840,8 @@ PlayerSettings:
   editorAssembliesCompatibilityLevel: 1
   m_RenderingPath: 1
   m_MobileRenderingPath: 1
-  metroPackageName: MRTK3 4th run
-  metroPackageVersion: 
+  metroPackageName: MRTK34thrun
+  metroPackageVersion: 1.0.0.0
   metroCertificatePath: 
   metroCertificatePassword: 
   metroCertificateSubject: 
@@ -849,7 +849,7 @@ PlayerSettings:
   metroCertificateNotAfter: 0000000000000000
   metroApplicationDescription: MRTK3 4th run
   wsaImages: {}
-  metroTileShortName: 
+  metroTileShortName: MRTK3 4th run
   metroTileShowName: 0
   metroMediumTileShowName: 0
   metroLargeTileShowName: 0
