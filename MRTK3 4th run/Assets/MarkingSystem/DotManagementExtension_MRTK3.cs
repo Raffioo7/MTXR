@@ -17,24 +17,43 @@ public class DotManagementExtension_MRTK3 : MonoBehaviour
     [Tooltip("Button to toggle dot visibility")]
     public GameObject toggleVisibilityButton;
     
+    [Header("Line Management Buttons")]
+    [Tooltip("Button to toggle line visibility")]
+    public GameObject toggleLinesButton;
+    
+    [Tooltip("Button to toggle auto-draw lines")]
+    public GameObject toggleAutoDrawButton;
+    
+    [Tooltip("Button to manually update lines")]
+    public GameObject updateLinesButton;
+    
     [Header("Debug")]
     public bool debugMode = true;
     
     // Private fields
     private PropertyClickHandler_MRTK3 propertyHandler;
     private DotPlacementHandler_MRTK3 dotHandler;
+    private LineConnectionHandler_MRTK3 lineHandler;
     private bool dotsVisible = true;
+    private bool linesVisible = true;
+    private bool autoDrawEnabled = true;
     
     void Start()
     {
         // Find required components
         propertyHandler = FindObjectOfType<PropertyClickHandler_MRTK3>();
         dotHandler = FindObjectOfType<DotPlacementHandler_MRTK3>();
+        lineHandler = FindObjectOfType<LineConnectionHandler_MRTK3>();
         
         if (dotHandler == null)
         {
             Debug.LogError("DotManagementExtension: DotPlacementHandler_MRTK3 not found!");
             return;
+        }
+        
+        if (lineHandler == null)
+        {
+            Debug.LogWarning("DotManagementExtension: LineConnectionHandler_MRTK3 not found! Line features will be disabled.");
         }
         
         // Set up all buttons
@@ -43,7 +62,7 @@ public class DotManagementExtension_MRTK3 : MonoBehaviour
     
     void SetupButtons()
     {
-        // Set up Clear All Dots button
+        // Set up original buttons
         if (clearAllDotsButton != null)
         {
             SetupButton(clearAllDotsButton, ClearAllDots, "Clear All Dots");
@@ -53,7 +72,6 @@ public class DotManagementExtension_MRTK3 : MonoBehaviour
             Debug.LogWarning("DotManagementExtension: Clear All Dots button not assigned");
         }
         
-        // Set up Remove Last Dot button
         if (removeLastDotButton != null)
         {
             SetupButton(removeLastDotButton, RemoveLastDot, "Remove Last Dot");
@@ -63,7 +81,6 @@ public class DotManagementExtension_MRTK3 : MonoBehaviour
             Debug.LogWarning("DotManagementExtension: Remove Last Dot button not assigned");
         }
         
-        // Set up Export Positions button
         if (exportPositionsButton != null)
         {
             SetupButton(exportPositionsButton, ExportDotPositions, "Export Positions");
@@ -73,7 +90,6 @@ public class DotManagementExtension_MRTK3 : MonoBehaviour
             Debug.LogWarning("DotManagementExtension: Export Positions button not assigned");
         }
         
-        // Set up Toggle Visibility button
         if (toggleVisibilityButton != null)
         {
             SetupButton(toggleVisibilityButton, ToggleDotVisibility, "Toggle Visibility");
@@ -81,6 +97,34 @@ public class DotManagementExtension_MRTK3 : MonoBehaviour
         else if (debugMode)
         {
             Debug.LogWarning("DotManagementExtension: Toggle Visibility button not assigned");
+        }
+        
+        // Set up new line management buttons
+        if (toggleLinesButton != null)
+        {
+            SetupButton(toggleLinesButton, ToggleLineVisibility, "Toggle Lines");
+        }
+        else if (debugMode)
+        {
+            Debug.LogWarning("DotManagementExtension: Toggle Lines button not assigned");
+        }
+        
+        if (toggleAutoDrawButton != null)
+        {
+            SetupButton(toggleAutoDrawButton, ToggleAutoDraw, "Toggle Auto Draw");
+        }
+        else if (debugMode)
+        {
+            Debug.LogWarning("DotManagementExtension: Toggle Auto Draw button not assigned");
+        }
+        
+        if (updateLinesButton != null)
+        {
+            SetupButton(updateLinesButton, UpdateLines, "Update Lines");
+        }
+        else if (debugMode)
+        {
+            Debug.LogWarning("DotManagementExtension: Update Lines button not assigned");
         }
     }
     
@@ -144,6 +188,12 @@ public class DotManagementExtension_MRTK3 : MonoBehaviour
         {
             dotHandler.ClearAllDots();
             
+            // Clear lines too
+            if (lineHandler != null)
+            {
+                lineHandler.ClearAllLines();
+            }
+            
             // Make sure dots are visible after clearing
             if (!dotsVisible && dotHandler.dotsParent != null)
             {
@@ -152,7 +202,7 @@ public class DotManagementExtension_MRTK3 : MonoBehaviour
             }
             
             if (debugMode)
-                Debug.Log("DotManagementExtension: Cleared all dots");
+                Debug.Log("DotManagementExtension: Cleared all dots and lines");
         }
     }
     
@@ -161,8 +211,15 @@ public class DotManagementExtension_MRTK3 : MonoBehaviour
         if (dotHandler != null)
         {
             dotHandler.RemoveLastDot();
+            
+            // Update lines after removing dot
+            if (lineHandler != null)
+            {
+                lineHandler.UpdateConnectionLines();
+            }
+            
             if (debugMode)
-                Debug.Log("DotManagementExtension: Removed last dot");
+                Debug.Log("DotManagementExtension: Removed last dot and updated lines");
         }
     }
     
@@ -178,10 +235,19 @@ public class DotManagementExtension_MRTK3 : MonoBehaviour
                 return;
             }
             
-            string export = "Dot Positions Export:\n";
-            export += "====================\n";
+            string export = "Dot Positions and Line Connections Export:\n";
+            export += "========================================\n";
             export += $"Total Dots: {positions.Count}\n";
-            export += "--------------------\n";
+            
+            // Add line information if available
+            if (lineHandler != null)
+            {
+                int lineCount = lineHandler.GetLineCount();
+                export += $"Total Lines: {lineCount}\n";
+            }
+            
+            export += "----------------------------------------\n";
+            export += "Dot Positions:\n";
             
             for (int i = 0; i < positions.Count; i++)
             {
@@ -189,7 +255,19 @@ public class DotManagementExtension_MRTK3 : MonoBehaviour
                 export += $"Dot {i + 1}: X={pos.x:F3}, Y={pos.y:F3}, Z={pos.z:F3}\n";
             }
             
-            export += "====================\n";
+            // Add line connections
+            if (lineHandler != null && positions.Count > 1)
+            {
+                export += "----------------------------------------\n";
+                export += "Line Connections:\n";
+                
+                for (int i = 0; i < positions.Count - 1; i++)
+                {
+                    export += $"Line {i + 1}: Dot {i + 1} -> Dot {i + 2}\n";
+                }
+            }
+            
+            export += "========================================\n";
             export += $"Exported at: {System.DateTime.Now:yyyy-MM-dd HH:mm:ss}\n";
             
             Debug.Log(export);
@@ -198,7 +276,7 @@ public class DotManagementExtension_MRTK3 : MonoBehaviour
             GUIUtility.systemCopyBuffer = export;
             
             if (debugMode)
-                Debug.Log("DotManagementExtension: Dot positions exported to console and clipboard");
+                Debug.Log("DotManagementExtension: Dot positions and line data exported to console and clipboard");
         }
     }
     
@@ -214,24 +292,65 @@ public class DotManagementExtension_MRTK3 : MonoBehaviour
         }
     }
     
-    // Optional: Visual feedback for toggle button
-    void UpdateToggleButtonVisual()
+    public void ToggleLineVisibility()
     {
-        if (toggleVisibilityButton != null)
+        if (lineHandler != null)
         {
-            Renderer buttonRenderer = toggleVisibilityButton.GetComponentInChildren<Renderer>();
+            lineHandler.ToggleLineVisibility();
+            linesVisible = !linesVisible;
+            
+            if (debugMode)
+                Debug.Log($"DotManagementExtension: Lines are now {(linesVisible ? "visible" : "hidden")}");
+        }
+    }
+    
+    public void ToggleAutoDraw()
+    {
+        if (lineHandler != null)
+        {
+            autoDrawEnabled = !autoDrawEnabled;
+            lineHandler.SetAutoDrawLines(autoDrawEnabled);
+            
+            if (debugMode)
+                Debug.Log($"DotManagementExtension: Auto-draw lines is now {(autoDrawEnabled ? "enabled" : "disabled")}");
+        }
+    }
+    
+    public void UpdateLines()
+    {
+        if (lineHandler != null)
+        {
+            lineHandler.ForceUpdateLines();
+            
+            if (debugMode)
+                Debug.Log("DotManagementExtension: Manually updated lines");
+        }
+    }
+    
+    // Visual feedback for buttons
+    void UpdateButtonVisuals()
+    {
+        UpdateToggleButtonVisual(toggleVisibilityButton, dotsVisible);
+        UpdateToggleButtonVisual(toggleLinesButton, linesVisible);
+        UpdateToggleButtonVisual(toggleAutoDrawButton, autoDrawEnabled);
+    }
+    
+    void UpdateToggleButtonVisual(GameObject button, bool isActive)
+    {
+        if (button != null)
+        {
+            Renderer buttonRenderer = button.GetComponentInChildren<Renderer>();
             if (buttonRenderer != null)
             {
-                // Change color based on visibility state
-                buttonRenderer.material.color = dotsVisible ? Color.white : Color.gray;
+                buttonRenderer.material.color = isActive ? Color.white : Color.gray;
             }
         }
     }
     
     void Update()
     {
-        // Update toggle button visual if needed
-        UpdateToggleButtonVisual();
+        // Update button visuals
+        UpdateButtonVisuals();
     }
     
     void OnDestroy()
@@ -253,6 +372,15 @@ public class DotManagementExtension_MRTK3 : MonoBehaviour
             
         if (toggleVisibilityButton != null)
             UnsubscribeFromButton(toggleVisibilityButton, ToggleDotVisibility);
+            
+        if (toggleLinesButton != null)
+            UnsubscribeFromButton(toggleLinesButton, ToggleLineVisibility);
+            
+        if (toggleAutoDrawButton != null)
+            UnsubscribeFromButton(toggleAutoDrawButton, ToggleAutoDraw);
+            
+        if (updateLinesButton != null)
+            UnsubscribeFromButton(updateLinesButton, UpdateLines);
     }
     
     void UnsubscribeFromButton(GameObject buttonObj, UnityEngine.Events.UnityAction action)
