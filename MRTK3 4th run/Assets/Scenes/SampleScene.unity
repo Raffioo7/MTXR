@@ -7248,6 +7248,7 @@ GameObject:
   - component: {fileID: 1849552044}
   - component: {fileID: 1849552045}
   - component: {fileID: 1849552046}
+  - component: {fileID: 1849552047}
   m_Layer: 0
   m_Name: FullScaleModel
   m_TagString: Untagged
@@ -7458,7 +7459,7 @@ MonoBehaviour:
   surfaceOffset: 0.001
   dotClickThreshold: 0.05
   labelSpacing: 1
-  labelFontSize: 1.2
+  labelFontSize: 0.1
   labelColor: {r: 1, g: 1, b: 1, a: 1}
   dotsParent: {fileID: 0}
   debugMode: 1
@@ -7483,7 +7484,10 @@ MonoBehaviour:
   updateLinesButton: {fileID: 0}
   forceCloseLoopButton: {fileID: 1267503829}
   startNewLoopButton: {fileID: 0}
-  clearLastLoopButton: {fileID: 745453729}
+  clearLastLoopButton: {fileID: 0}
+  toggleShadingButton: {fileID: 745453729}
+  toggleAutoShadingButton: {fileID: 0}
+  updateShadingButton: {fileID: 0}
   debugMode: 1
 --- !u!114 &1849552046
 MonoBehaviour:
@@ -7499,11 +7503,30 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   lineMaterial: {fileID: 0}
   closedLoopLineMaterial: {fileID: 0}
-  lineWidth: 0.01
+  lineWidth: 0.02
   lineColor: {r: 0, g: 0, b: 1, a: 1}
-  closedLoopColor: {r: 0, g: 1, b: 1, a: 1}
+  closedLoopColor: {r: 0, g: 1, b: 0, a: 1}
   autoDrawLines: 1
   linesParent: {fileID: 0}
+  debugMode: 1
+--- !u!114 &1849552047
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1849552040}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 715b1f5fa9af61a43b78af8a07484e4c, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  shadedAreaMaterial: {fileID: 0}
+  shadedAreaColor: {r: 0.2, g: 0.5, b: 0.8, a: 0.5}
+  surfaceOffset: 0.0001
+  autoShadeOnLoopClose: 1
+  shadedAreasParent: {fileID: 0}
+  doubleSided: 1
   debugMode: 1
 --- !u!1 &1864235144 stripped
 GameObject:

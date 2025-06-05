@@ -37,6 +37,16 @@ public class DotManagementExtension_MRTK3 : MonoBehaviour
     [Tooltip("Button to clear only the last completed loop")]
     public GameObject clearLastLoopButton;
     
+    [Header("Area Shading Buttons")]
+    [Tooltip("Button to toggle shaded area visibility")]
+    public GameObject toggleShadingButton;
+    
+    [Tooltip("Button to toggle auto-shading for new loops")]
+    public GameObject toggleAutoShadingButton;
+    
+    [Tooltip("Button to manually update all shaded areas")]
+    public GameObject updateShadingButton;
+    
     [Header("Debug")]
     public bool debugMode = true;
     
@@ -44,9 +54,12 @@ public class DotManagementExtension_MRTK3 : MonoBehaviour
     private PropertyClickHandler_MRTK3 propertyHandler;
     private DotPlacementHandler_MRTK3 dotHandler;
     private LineConnectionHandler_MRTK3 lineHandler;
+    private LoopAreaShader_MRTK3 areaShader;
     private bool dotsVisible = true;
     private bool linesVisible = true;
     private bool autoDrawEnabled = true;
+    private bool shadingVisible = true;
+    private bool autoShadingEnabled = true;
     
     void Start()
     {
@@ -54,6 +67,7 @@ public class DotManagementExtension_MRTK3 : MonoBehaviour
         propertyHandler = FindObjectOfType<PropertyClickHandler_MRTK3>();
         dotHandler = FindObjectOfType<DotPlacementHandler_MRTK3>();
         lineHandler = FindObjectOfType<LineConnectionHandler_MRTK3>();
+        areaShader = FindObjectOfType<LoopAreaShader_MRTK3>();
         
         if (dotHandler == null)
         {
@@ -64,6 +78,11 @@ public class DotManagementExtension_MRTK3 : MonoBehaviour
         if (lineHandler == null)
         {
             Debug.LogWarning("DotManagementExtension: LineConnectionHandler_MRTK3 not found! Line features will be disabled.");
+        }
+        
+        if (areaShader == null)
+        {
+            Debug.LogWarning("DotManagementExtension: LoopAreaShader_MRTK3 not found! Area shading features will be disabled.");
         }
         
         // Subscribe to loop events for feedback
@@ -183,6 +202,34 @@ public class DotManagementExtension_MRTK3 : MonoBehaviour
         {
             Debug.LogWarning("DotManagementExtension: Clear Last Loop button not assigned");
         }
+        
+        // Set up area shading buttons
+        if (toggleShadingButton != null)
+        {
+            SetupButton(toggleShadingButton, ToggleShadingVisibility, "Toggle Shading");
+        }
+        else if (debugMode)
+        {
+            Debug.LogWarning("DotManagementExtension: Toggle Shading button not assigned");
+        }
+        
+        if (toggleAutoShadingButton != null)
+        {
+            SetupButton(toggleAutoShadingButton, ToggleAutoShading, "Toggle Auto Shading");
+        }
+        else if (debugMode)
+        {
+            Debug.LogWarning("DotManagementExtension: Toggle Auto Shading button not assigned");
+        }
+        
+        if (updateShadingButton != null)
+        {
+            SetupButton(updateShadingButton, UpdateShading, "Update Shading");
+        }
+        else if (debugMode)
+        {
+            Debug.LogWarning("DotManagementExtension: Update Shading button not assigned");
+        }
     }
     
     void SetupButton(GameObject buttonObj, UnityEngine.Events.UnityAction action, string buttonName)
@@ -251,6 +298,12 @@ public class DotManagementExtension_MRTK3 : MonoBehaviour
                 lineHandler.ClearAllLines();
             }
             
+            // Clear shaded areas too
+            if (areaShader != null)
+            {
+                areaShader.ClearAllShadedAreas();
+            }
+            
             // Make sure dots are visible after clearing
             if (!dotsVisible && dotHandler.dotsParent != null)
             {
@@ -259,7 +312,7 @@ public class DotManagementExtension_MRTK3 : MonoBehaviour
             }
             
             if (debugMode)
-                Debug.Log("DotManagementExtension: Cleared all dots and lines");
+                Debug.Log("DotManagementExtension: Cleared all dots, lines, and shaded areas");
         }
     }
     
@@ -275,8 +328,14 @@ public class DotManagementExtension_MRTK3 : MonoBehaviour
                 lineHandler.UpdateConnectionLines();
             }
             
+            // Update shaded areas after removing dot
+            if (areaShader != null)
+            {
+                areaShader.ForceUpdateAllAreas();
+            }
+            
             if (debugMode)
-                Debug.Log("DotManagementExtension: Removed last dot and updated lines");
+                Debug.Log("DotManagementExtension: Removed last dot and updated lines and shading");
         }
     }
     
@@ -305,6 +364,13 @@ public class DotManagementExtension_MRTK3 : MonoBehaviour
             {
                 int lineCount = lineHandler.GetLineCount();
                 export += $"Total Lines: {lineCount}\n";
+            }
+            
+            // Add shading information if available
+            if (areaShader != null)
+            {
+                int shadedAreaCount = areaShader.GetShadedAreaCount();
+                export += $"Shaded Areas: {shadedAreaCount}\n";
             }
             
             export += "-------------------------------------\n";
@@ -343,6 +409,7 @@ public class DotManagementExtension_MRTK3 : MonoBehaviour
                         export += $"  Line {i + 1}: Dot {i + 1} -> Dot {i + 2}\n";
                     }
                     export += $"  Closing Line: Dot {loopPositions.Count} -> Dot 1 (LOOP CLOSURE)\n";
+                    export += "Shaded Area: YES\n";
                 }
                 else if (!isCompleted && loopPositions.Count > 1)
                 {
@@ -351,6 +418,7 @@ public class DotManagementExtension_MRTK3 : MonoBehaviour
                     {
                         export += $"  Line {i + 1}: Dot {i + 1} -> Dot {i + 2}\n";
                     }
+                    export += "Shaded Area: NO (loop not closed)\n";
                 }
             }
             
@@ -411,6 +479,41 @@ public class DotManagementExtension_MRTK3 : MonoBehaviour
             
             if (debugMode)
                 Debug.Log("DotManagementExtension: Manually updated all loop lines");
+        }
+    }
+    
+    public void ToggleShadingVisibility()
+    {
+        if (areaShader != null)
+        {
+            areaShader.ToggleShadedAreaVisibility();
+            shadingVisible = !shadingVisible;
+            
+            if (debugMode)
+                Debug.Log($"DotManagementExtension: Shaded areas are now {(shadingVisible ? "visible" : "hidden")}");
+        }
+    }
+    
+    public void ToggleAutoShading()
+    {
+        if (areaShader != null)
+        {
+            autoShadingEnabled = !autoShadingEnabled;
+            areaShader.SetAutoShading(autoShadingEnabled);
+            
+            if (debugMode)
+                Debug.Log($"DotManagementExtension: Auto-shading is now {(autoShadingEnabled ? "enabled" : "disabled")}");
+        }
+    }
+    
+    public void UpdateShading()
+    {
+        if (areaShader != null)
+        {
+            areaShader.ForceUpdateAllAreas();
+            
+            if (debugMode)
+                Debug.Log("DotManagementExtension: Manually updated all shaded areas");
         }
     }
     
@@ -507,6 +610,12 @@ public class DotManagementExtension_MRTK3 : MonoBehaviour
             {
                 lineHandler.UpdateConnectionLines();
             }
+            
+            // Update shaded areas after clearing
+            if (areaShader != null)
+            {
+                areaShader.ForceUpdateAllAreas();
+            }
         }
     }
     
@@ -516,6 +625,8 @@ public class DotManagementExtension_MRTK3 : MonoBehaviour
         UpdateToggleButtonVisual(toggleVisibilityButton, dotsVisible);
         UpdateToggleButtonVisual(toggleLinesButton, linesVisible);
         UpdateToggleButtonVisual(toggleAutoDrawButton, autoDrawEnabled);
+        UpdateToggleButtonVisual(toggleShadingButton, shadingVisible);
+        UpdateToggleButtonVisual(toggleAutoShadingButton, autoShadingEnabled);
         
         // Update loop-specific button visuals
         UpdateLoopButtonVisuals();
@@ -610,6 +721,15 @@ public class DotManagementExtension_MRTK3 : MonoBehaviour
             
         if (clearLastLoopButton != null)
             UnsubscribeFromButton(clearLastLoopButton, ClearLastLoop);
+            
+        if (toggleShadingButton != null)
+            UnsubscribeFromButton(toggleShadingButton, ToggleShadingVisibility);
+            
+        if (toggleAutoShadingButton != null)
+            UnsubscribeFromButton(toggleAutoShadingButton, ToggleAutoShading);
+            
+        if (updateShadingButton != null)
+            UnsubscribeFromButton(updateShadingButton, UpdateShading);
     }
     
     void UnsubscribeFromButton(GameObject buttonObj, UnityEngine.Events.UnityAction action)
