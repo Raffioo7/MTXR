@@ -27,6 +27,16 @@ public class DotManagementExtension_MRTK3 : MonoBehaviour
     [Tooltip("Button to manually update lines")]
     public GameObject updateLinesButton;
     
+    [Header("Loop Management Buttons")]
+    [Tooltip("Button to force close current loop")]
+    public GameObject forceCloseLoopButton;
+    
+    [Tooltip("Button to start new loop without closing current")]
+    public GameObject startNewLoopButton;
+    
+    [Tooltip("Button to clear only the last completed loop")]
+    public GameObject clearLastLoopButton;
+    
     [Header("Debug")]
     public bool debugMode = true;
     
@@ -56,8 +66,27 @@ public class DotManagementExtension_MRTK3 : MonoBehaviour
             Debug.LogWarning("DotManagementExtension: LineConnectionHandler_MRTK3 not found! Line features will be disabled.");
         }
         
+        // Subscribe to loop events for feedback
+        if (dotHandler != null)
+        {
+            dotHandler.OnLoopClosed += OnLoopClosed;
+            dotHandler.OnNewLoopStarted += OnNewLoopStarted;
+        }
+        
         // Set up all buttons
         SetupButtons();
+    }
+    
+    void OnLoopClosed(int loopIndex)
+    {
+        if (debugMode)
+            Debug.Log($"DotManagementExtension: Loop {loopIndex + 1} was closed");
+    }
+    
+    void OnNewLoopStarted(int loopIndex)
+    {
+        if (debugMode)
+            Debug.Log($"DotManagementExtension: New loop {loopIndex + 1} was started");
     }
     
     void SetupButtons()
@@ -99,7 +128,7 @@ public class DotManagementExtension_MRTK3 : MonoBehaviour
             Debug.LogWarning("DotManagementExtension: Toggle Visibility button not assigned");
         }
         
-        // Set up new line management buttons
+        // Set up line management buttons
         if (toggleLinesButton != null)
         {
             SetupButton(toggleLinesButton, ToggleLineVisibility, "Toggle Lines");
@@ -125,6 +154,34 @@ public class DotManagementExtension_MRTK3 : MonoBehaviour
         else if (debugMode)
         {
             Debug.LogWarning("DotManagementExtension: Update Lines button not assigned");
+        }
+        
+        // Set up new loop management buttons
+        if (forceCloseLoopButton != null)
+        {
+            SetupButton(forceCloseLoopButton, ForceCloseCurrentLoop, "Force Close Loop");
+        }
+        else if (debugMode)
+        {
+            Debug.LogWarning("DotManagementExtension: Force Close Loop button not assigned");
+        }
+        
+        if (startNewLoopButton != null)
+        {
+            SetupButton(startNewLoopButton, StartNewLoop, "Start New Loop");
+        }
+        else if (debugMode)
+        {
+            Debug.LogWarning("DotManagementExtension: Start New Loop button not assigned");
+        }
+        
+        if (clearLastLoopButton != null)
+        {
+            SetupButton(clearLastLoopButton, ClearLastLoop, "Clear Last Loop");
+        }
+        else if (debugMode)
+        {
+            Debug.LogWarning("DotManagementExtension: Clear Last Loop button not assigned");
         }
     }
     
@@ -227,17 +284,21 @@ public class DotManagementExtension_MRTK3 : MonoBehaviour
     {
         if (dotHandler != null)
         {
-            var positions = dotHandler.GetAllDotPositions();
+            var allLoops = dotHandler.GetAllLoopPositions();
+            int completedLoops = dotHandler.GetCompletedLoopCount();
+            int currentLoopDots = dotHandler.GetCurrentLoopDotCount();
             
-            if (positions.Count == 0)
+            if (allLoops.Count == 0)
             {
                 Debug.LogWarning("DotManagementExtension: No dots to export!");
                 return;
             }
             
-            string export = "Dot Positions and Line Connections Export:\n";
-            export += "========================================\n";
-            export += $"Total Dots: {positions.Count}\n";
+            string export = "Dot Positions and Loop Data Export:\n";
+            export += "=====================================\n";
+            export += $"Completed Loops: {completedLoops}\n";
+            export += $"Current Loop Dots: {currentLoopDots}\n";
+            export += $"Total Loops: {allLoops.Count}\n";
             
             // Add line information if available
             if (lineHandler != null)
@@ -246,28 +307,54 @@ public class DotManagementExtension_MRTK3 : MonoBehaviour
                 export += $"Total Lines: {lineCount}\n";
             }
             
-            export += "----------------------------------------\n";
-            export += "Dot Positions:\n";
+            export += "-------------------------------------\n";
             
-            for (int i = 0; i < positions.Count; i++)
+            // Export each loop separately
+            for (int loopIndex = 0; loopIndex < allLoops.Count; loopIndex++)
             {
-                Vector3 pos = positions[i];
-                export += $"Dot {i + 1}: X={pos.x:F3}, Y={pos.y:F3}, Z={pos.z:F3}\n";
-            }
-            
-            // Add line connections
-            if (lineHandler != null && positions.Count > 1)
-            {
-                export += "----------------------------------------\n";
-                export += "Line Connections:\n";
+                var loopPositions = allLoops[loopIndex];
+                bool isCompleted = loopIndex < completedLoops;
                 
-                for (int i = 0; i < positions.Count - 1; i++)
+                export += $"\n{(isCompleted ? "COMPLETED" : "CURRENT")} LOOP {loopIndex + 1}:\n";
+                export += $"Dots in loop: {loopPositions.Count}\n";
+                
+                if (isCompleted)
                 {
-                    export += $"Line {i + 1}: Dot {i + 1} -> Dot {i + 2}\n";
+                    export += "Status: CLOSED (connects back to first dot)\n";
+                }
+                else
+                {
+                    export += "Status: OPEN (work in progress)\n";
+                }
+                
+                export += "Dot Positions:\n";
+                for (int dotIndex = 0; dotIndex < loopPositions.Count; dotIndex++)
+                {
+                    Vector3 pos = loopPositions[dotIndex];
+                    export += $"  Dot {dotIndex + 1}: X={pos.x:F3}, Y={pos.y:F3}, Z={pos.z:F3}\n";
+                }
+                
+                // Add line connections for this loop
+                if (isCompleted && loopPositions.Count > 2)
+                {
+                    export += "Line Connections:\n";
+                    for (int i = 0; i < loopPositions.Count - 1; i++)
+                    {
+                        export += $"  Line {i + 1}: Dot {i + 1} -> Dot {i + 2}\n";
+                    }
+                    export += $"  Closing Line: Dot {loopPositions.Count} -> Dot 1 (LOOP CLOSURE)\n";
+                }
+                else if (!isCompleted && loopPositions.Count > 1)
+                {
+                    export += "Line Connections:\n";
+                    for (int i = 0; i < loopPositions.Count - 1; i++)
+                    {
+                        export += $"  Line {i + 1}: Dot {i + 1} -> Dot {i + 2}\n";
+                    }
                 }
             }
             
-            export += "========================================\n";
+            export += "\n=====================================\n";
             export += $"Exported at: {System.DateTime.Now:yyyy-MM-dd HH:mm:ss}\n";
             
             Debug.Log(export);
@@ -276,7 +363,7 @@ public class DotManagementExtension_MRTK3 : MonoBehaviour
             GUIUtility.systemCopyBuffer = export;
             
             if (debugMode)
-                Debug.Log("DotManagementExtension: Dot positions and line data exported to console and clipboard");
+                Debug.Log("DotManagementExtension: Loop data exported to console and clipboard");
         }
     }
     
@@ -323,7 +410,103 @@ public class DotManagementExtension_MRTK3 : MonoBehaviour
             lineHandler.ForceUpdateLines();
             
             if (debugMode)
-                Debug.Log("DotManagementExtension: Manually updated lines");
+                Debug.Log("DotManagementExtension: Manually updated all loop lines");
+        }
+    }
+    
+    public void ForceCloseCurrentLoop()
+    {
+        if (dotHandler != null)
+        {
+            int currentLoopDots = dotHandler.GetCurrentLoopDotCount();
+            
+            if (currentLoopDots < 3)
+            {
+                if (debugMode)
+                    Debug.LogWarning("DotManagementExtension: Cannot close loop - need at least 3 dots");
+                return;
+            }
+            
+            // Force close by using reflection to call the private method
+            var type = dotHandler.GetType();
+            var method = type.GetMethod("CloseCurrentLoop", BindingFlags.NonPublic | BindingFlags.Instance);
+            if (method != null)
+            {
+                method.Invoke(dotHandler, null);
+                
+                if (debugMode)
+                    Debug.Log("DotManagementExtension: Force closed current loop");
+            }
+            else if (debugMode)
+            {
+                Debug.LogError("DotManagementExtension: Could not find CloseCurrentLoop method");
+            }
+        }
+    }
+    
+    public void StartNewLoop()
+    {
+        if (dotHandler != null)
+        {
+            // Force start a new loop by using reflection to call the private method
+            var type = dotHandler.GetType();
+            var method = type.GetMethod("StartNewLoop", BindingFlags.NonPublic | BindingFlags.Instance);
+            if (method != null)
+            {
+                method.Invoke(dotHandler, null);
+                
+                if (debugMode)
+                    Debug.Log("DotManagementExtension: Started new loop without closing current");
+            }
+            else if (debugMode)
+            {
+                Debug.LogError("DotManagementExtension: Could not find StartNewLoop method");
+            }
+        }
+    }
+    
+    public void ClearLastLoop()
+    {
+        if (dotHandler != null)
+        {
+            int completedLoops = dotHandler.GetCompletedLoopCount();
+            int currentLoopDots = dotHandler.GetCurrentLoopDotCount();
+            
+            if (currentLoopDots > 0)
+            {
+                // Clear current loop first
+                var allLoops = dotHandler.GetAllLoopPositions();
+                if (allLoops.Count > 0)
+                {
+                    var currentLoop = allLoops[allLoops.Count - 1];
+                    // Use RemoveLastDot multiple times to clear current loop
+                    for (int i = 0; i < currentLoop.Count; i++)
+                    {
+                        dotHandler.RemoveLastDot();
+                    }
+                    
+                    if (debugMode)
+                        Debug.Log("DotManagementExtension: Cleared current loop");
+                }
+            }
+            else if (completedLoops > 0)
+            {
+                // Clear last completed loop
+                dotHandler.RemoveLastDot(); // This should remove the last completed loop
+                
+                if (debugMode)
+                    Debug.Log("DotManagementExtension: Cleared last completed loop");
+            }
+            else if (debugMode)
+            {
+                Debug.LogWarning("DotManagementExtension: No loops to clear");
+            }
+            
+            // Update lines after clearing
+            if (lineHandler != null)
+            {
+                lineHandler.UpdateConnectionLines();
+            }
         }
     }
     
@@ -333,6 +516,24 @@ public class DotManagementExtension_MRTK3 : MonoBehaviour
         UpdateToggleButtonVisual(toggleVisibilityButton, dotsVisible);
         UpdateToggleButtonVisual(toggleLinesButton, linesVisible);
         UpdateToggleButtonVisual(toggleAutoDrawButton, autoDrawEnabled);
+        
+        // Update loop-specific button visuals
+        UpdateLoopButtonVisuals();
+    }
+    
+    void UpdateLoopButtonVisuals()
+    {
+        if (dotHandler != null)
+        {
+            int currentLoopDots = dotHandler.GetCurrentLoopDotCount();
+            int completedLoops = dotHandler.GetCompletedLoopCount();
+            
+            // Update force close button (enabled only if current loop has 3+ dots)
+            UpdateActionButtonVisual(forceCloseLoopButton, currentLoopDots >= 3);
+            
+            // Update clear last loop button (enabled if there are loops to clear)
+            UpdateActionButtonVisual(clearLastLoopButton, currentLoopDots > 0 || completedLoops > 0);
+        }
     }
     
     void UpdateToggleButtonVisual(GameObject button, bool isActive)
@@ -347,6 +548,18 @@ public class DotManagementExtension_MRTK3 : MonoBehaviour
         }
     }
     
+    void UpdateActionButtonVisual(GameObject button, bool isEnabled)
+    {
+        if (button != null)
+        {
+            Renderer buttonRenderer = button.GetComponentInChildren<Renderer>();
+            if (buttonRenderer != null)
+            {
+                buttonRenderer.material.color = isEnabled ? Color.white : Color.red;
+            }
+        }
+    }
+    
     void Update()
     {
         // Update button visuals
@@ -355,6 +568,13 @@ public class DotManagementExtension_MRTK3 : MonoBehaviour
     
     void OnDestroy()
     {
+        // Unsubscribe from loop events
+        if (dotHandler != null)
+        {
+            dotHandler.OnLoopClosed -= OnLoopClosed;
+            dotHandler.OnNewLoopStarted -= OnNewLoopStarted;
+        }
+        
         // Remove all button listeners
         UnsubscribeFromAllButtons();
     }
@@ -381,6 +601,15 @@ public class DotManagementExtension_MRTK3 : MonoBehaviour
             
         if (updateLinesButton != null)
             UnsubscribeFromButton(updateLinesButton, UpdateLines);
+            
+        if (forceCloseLoopButton != null)
+            UnsubscribeFromButton(forceCloseLoopButton, ForceCloseCurrentLoop);
+            
+        if (startNewLoopButton != null)
+            UnsubscribeFromButton(startNewLoopButton, StartNewLoop);
+            
+        if (clearLastLoopButton != null)
+            UnsubscribeFromButton(clearLastLoopButton, ClearLastLoop);
     }
     
     void UnsubscribeFromButton(GameObject buttonObj, UnityEngine.Events.UnityAction action)

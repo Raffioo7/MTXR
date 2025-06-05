@@ -7,11 +7,17 @@ public class LineConnectionHandler_MRTK3 : MonoBehaviour
     [Tooltip("Material for the connecting lines")]
     public Material lineMaterial;
     
+    [Tooltip("Material for closed loop lines")]
+    public Material closedLoopLineMaterial;
+    
     [Tooltip("Width of the connecting lines")]
     public float lineWidth = 0.01f;
     
     [Tooltip("Color of the connecting lines")]
     public Color lineColor = Color.blue;
+    
+    [Tooltip("Color of closed loop lines")]
+    public Color closedLoopColor = Color.cyan;
     
     [Tooltip("Should lines be drawn automatically when dots are placed")]
     public bool autoDrawLines = true;
@@ -24,12 +30,15 @@ public class LineConnectionHandler_MRTK3 : MonoBehaviour
     
     // Private fields
     private DotPlacementHandler_MRTK3 dotHandler;
-    private List<LineRenderer> connectionLines = new List<LineRenderer>();
-    private List<GameObject> lineObjects = new List<GameObject>();
+    private List<List<LineRenderer>> loopLines = new List<List<LineRenderer>>(); // Lines for each completed loop
+    private List<List<GameObject>> loopLineObjects = new List<List<GameObject>>(); // GameObjects for each completed loop
+    private List<LineRenderer> currentLoopLines = new List<LineRenderer>(); // Lines for current loop
+    private List<GameObject> currentLoopLineObjects = new List<GameObject>(); // GameObjects for current loop
     
     // Store previous values for change detection
     private float previousLineWidth;
     private Color previousLineColor;
+    private Color previousClosedLoopColor;
     
     void Start()
     {
@@ -42,6 +51,10 @@ public class LineConnectionHandler_MRTK3 : MonoBehaviour
             return;
         }
         
+        // Subscribe to loop events
+        dotHandler.OnLoopClosed += OnLoopClosed;
+        dotHandler.OnNewLoopStarted += OnNewLoopStarted;
+        
         // Create lines parent if not assigned
         if (linesParent == null)
         {
@@ -49,18 +62,24 @@ public class LineConnectionHandler_MRTK3 : MonoBehaviour
             linesParent = linesParentObj.transform;
         }
         
-        // Create default line material if not assigned
+        // Create default line materials if not assigned
         if (lineMaterial == null)
         {
             CreateDefaultLineMaterial();
         }
         
+        if (closedLoopLineMaterial == null)
+        {
+            CreateDefaultClosedLoopLineMaterial();
+        }
+        
         // Initialize previous values
         previousLineWidth = lineWidth;
         previousLineColor = lineColor;
+        previousClosedLoopColor = closedLoopColor;
         
         if (debugMode)
-            Debug.Log("LineConnectionHandler: Initialized successfully");
+            Debug.Log("LineConnectionHandler: Initialized successfully with loop support");
     }
     
     void CreateDefaultLineMaterial()
@@ -68,6 +87,13 @@ public class LineConnectionHandler_MRTK3 : MonoBehaviour
         lineMaterial = new Material(Shader.Find("Universal Render Pipeline/Lit"));
         lineMaterial.color = lineColor;
         lineMaterial.name = "DefaultLineMaterial";
+    }
+    
+    void CreateDefaultClosedLoopLineMaterial()
+    {
+        closedLoopLineMaterial = new Material(Shader.Find("Universal Render Pipeline/Lit"));
+        closedLoopLineMaterial.color = closedLoopColor;
+        closedLoopLineMaterial.name = "DefaultClosedLoopLineMaterial";
     }
     
     void Update()
@@ -78,7 +104,7 @@ public class LineConnectionHandler_MRTK3 : MonoBehaviour
         // Auto-update lines if enabled and dots have changed
         if (autoDrawLines && dotHandler != null)
         {
-            UpdateConnectionLines();
+            UpdateCurrentLoopLines();
         }
     }
     
@@ -100,6 +126,13 @@ public class LineConnectionHandler_MRTK3 : MonoBehaviour
             needsUpdate = true;
         }
         
+        // Check if closed loop color changed
+        if (closedLoopColor != previousClosedLoopColor)
+        {
+            previousClosedLoopColor = closedLoopColor;
+            needsUpdate = true;
+        }
+        
         // Update all lines if any parameter changed
         if (needsUpdate)
         {
@@ -109,14 +142,19 @@ public class LineConnectionHandler_MRTK3 : MonoBehaviour
     
     void UpdateAllLineProperties()
     {
-        // Update material color
+        // Update material colors
         if (lineMaterial != null)
         {
             lineMaterial.color = lineColor;
         }
         
-        // Update all existing line renderers
-        foreach (LineRenderer line in connectionLines)
+        if (closedLoopLineMaterial != null)
+        {
+            closedLoopLineMaterial.color = closedLoopColor;
+        }
+        
+        // Update all current loop line renderers
+        foreach (LineRenderer line in currentLoopLines)
         {
             if (line != null)
             {
@@ -126,42 +164,189 @@ public class LineConnectionHandler_MRTK3 : MonoBehaviour
             }
         }
         
+        // Update all completed loop line renderers
+        foreach (var loopLineList in loopLines)
+        {
+            foreach (LineRenderer line in loopLineList)
+            {
+                if (line != null)
+                {
+                    line.startWidth = lineWidth;
+                    line.endWidth = lineWidth;
+                    line.material = closedLoopLineMaterial;
+                }
+            }
+        }
+        
         if (debugMode)
             Debug.Log("LineConnectionHandler: Updated all line properties");
     }
     
-    public void UpdateConnectionLines()
+    void OnLoopClosed(int loopIndex)
     {
-        if (dotHandler == null) return;
+        if (debugMode)
+            Debug.Log($"LineConnectionHandler: Loop {loopIndex + 1} closed, creating closed loop lines");
         
-        var dotPositions = dotHandler.GetAllDotPositions();
-        int requiredLines = Mathf.Max(0, dotPositions.Count - 1);
+        // Move current loop lines to completed loops
+        loopLines.Add(new List<LineRenderer>(currentLoopLines));
+        loopLineObjects.Add(new List<GameObject>(currentLoopLineObjects));
         
-        // Remove excess lines if we have too many
-        while (connectionLines.Count > requiredLines)
+        // Get the loop positions
+        var allLoops = dotHandler.GetAllLoopPositions();
+        if (loopIndex < allLoops.Count)
         {
-            RemoveLastLine();
-        }
-        
-        // Add new lines if we need more
-        while (connectionLines.Count < requiredLines)
-        {
-            CreateNewLine();
-        }
-        
-        // Update all line positions
-        for (int i = 0; i < connectionLines.Count && i < requiredLines; i++)
-        {
-            if (connectionLines[i] != null && i + 1 < dotPositions.Count)
+            var closedLoopPositions = allLoops[loopIndex];
+            
+            // Add closing line from last dot back to first dot
+            if (closedLoopPositions.Count > 2)
             {
-                UpdateLinePositions(connectionLines[i], dotPositions[i], dotPositions[i + 1]);
+                CreateClosingLine(loopIndex, closedLoopPositions[closedLoopPositions.Count - 1], closedLoopPositions[0]);
+            }
+            
+            // Update all lines in this loop to use closed loop material
+            UpdateLoopLinesToClosedStyle(loopIndex);
+        }
+        
+        // Clear current loop lines for the new loop
+        currentLoopLines.Clear();
+        currentLoopLineObjects.Clear();
+    }
+    
+    void OnNewLoopStarted(int loopIndex)
+    {
+        if (debugMode)
+            Debug.Log($"LineConnectionHandler: New loop {loopIndex + 1} started");
+    }
+    
+    void CreateClosingLine(int loopIndex, Vector3 startPos, Vector3 endPos)
+    {
+        GameObject lineObj = new GameObject($"Loop{loopIndex + 1}_ClosingLine");
+        lineObj.transform.SetParent(linesParent);
+        
+        LineRenderer lineRenderer = lineObj.AddComponent<LineRenderer>();
+        
+        // Configure the line renderer
+        lineRenderer.material = closedLoopLineMaterial;
+        lineRenderer.startWidth = lineWidth;
+        lineRenderer.endWidth = lineWidth;
+        lineRenderer.positionCount = 2;
+        lineRenderer.useWorldSpace = true;
+        
+        // Disable shadows and lighting for better performance
+        lineRenderer.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+        lineRenderer.receiveShadows = false;
+        
+        // Set positions
+        lineRenderer.SetPosition(0, startPos);
+        lineRenderer.SetPosition(1, endPos);
+        
+        // Add to the appropriate loop
+        if (loopIndex < loopLines.Count)
+        {
+            loopLines[loopIndex].Add(lineRenderer);
+            loopLineObjects[loopIndex].Add(lineObj);
+        }
+        
+        if (debugMode)
+            Debug.Log($"LineConnectionHandler: Created closing line for loop {loopIndex + 1}");
+    }
+    
+    void UpdateLoopLinesToClosedStyle(int loopIndex)
+    {
+        if (loopIndex < loopLines.Count)
+        {
+            foreach (LineRenderer line in loopLines[loopIndex])
+            {
+                if (line != null)
+                {
+                    line.material = closedLoopLineMaterial;
+                }
             }
         }
     }
     
-    void CreateNewLine()
+    void UpdateCurrentLoopLines()
     {
-        GameObject lineObj = new GameObject($"ConnectionLine_{connectionLines.Count + 1}");
+        if (dotHandler == null) return;
+        
+        // Get current loop dot count
+        int currentLoopDotCount = dotHandler.GetCurrentLoopDotCount();
+        int requiredLines = Mathf.Max(0, currentLoopDotCount - 1);
+        
+        // Remove excess lines if we have too many
+        while (currentLoopLines.Count > requiredLines)
+        {
+            RemoveLastCurrentLoopLine();
+        }
+        
+        // Add new lines if we need more
+        while (currentLoopLines.Count < requiredLines)
+        {
+            CreateNewCurrentLoopLine();
+        }
+        
+        // Update all current loop line positions
+        var allLoops = dotHandler.GetAllLoopPositions();
+        if (allLoops.Count > 0)
+        {
+            var currentLoopPositions = allLoops[allLoops.Count - 1]; // Last loop is current
+            
+            for (int i = 0; i < currentLoopLines.Count && i < requiredLines && i + 1 < currentLoopPositions.Count; i++)
+            {
+                if (currentLoopLines[i] != null)
+                {
+                    UpdateLinePositions(currentLoopLines[i], currentLoopPositions[i], currentLoopPositions[i + 1]);
+                }
+            }
+        }
+    }
+    
+    public void UpdateConnectionLines()
+    {
+        // This method now updates both current and completed loops
+        UpdateCurrentLoopLines();
+        UpdateAllCompletedLoops();
+    }
+    
+    void UpdateAllCompletedLoops()
+    {
+        var allLoops = dotHandler.GetAllLoopPositions();
+        int completedLoopCount = dotHandler.GetCompletedLoopCount();
+        
+        for (int loopIndex = 0; loopIndex < completedLoopCount && loopIndex < allLoops.Count; loopIndex++)
+        {
+            var loopPositions = allLoops[loopIndex];
+            
+            if (loopIndex < loopLines.Count)
+            {
+                var loopLineList = loopLines[loopIndex];
+                
+                // Update sequential lines (not including closing line)
+                int sequentialLines = loopPositions.Count - 1;
+                for (int lineIndex = 0; lineIndex < sequentialLines && lineIndex < loopLineList.Count - 1; lineIndex++)
+                {
+                    if (loopLineList[lineIndex] != null)
+                    {
+                        UpdateLinePositions(loopLineList[lineIndex], loopPositions[lineIndex], loopPositions[lineIndex + 1]);
+                    }
+                }
+                
+                // Update closing line (last line in the list)
+                if (loopLineList.Count > 0 && loopPositions.Count > 2)
+                {
+                    var closingLine = loopLineList[loopLineList.Count - 1];
+                    if (closingLine != null)
+                    {
+                        UpdateLinePositions(closingLine, loopPositions[loopPositions.Count - 1], loopPositions[0]);
+                    }
+                }
+            }
+        }
+    }
+    
+    void CreateNewCurrentLoopLine()
+    {
+        GameObject lineObj = new GameObject($"CurrentLoop_Line_{currentLoopLines.Count + 1}");
         lineObj.transform.SetParent(linesParent);
         
         LineRenderer lineRenderer = lineObj.AddComponent<LineRenderer>();
@@ -177,29 +362,29 @@ public class LineConnectionHandler_MRTK3 : MonoBehaviour
         lineRenderer.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
         lineRenderer.receiveShadows = false;
         
-        connectionLines.Add(lineRenderer);
-        lineObjects.Add(lineObj);
+        currentLoopLines.Add(lineRenderer);
+        currentLoopLineObjects.Add(lineObj);
         
         if (debugMode)
-            Debug.Log($"LineConnectionHandler: Created line #{connectionLines.Count}");
+            Debug.Log($"LineConnectionHandler: Created current loop line #{currentLoopLines.Count}");
     }
     
-    void RemoveLastLine()
+    void RemoveLastCurrentLoopLine()
     {
-        if (connectionLines.Count > 0)
+        if (currentLoopLines.Count > 0)
         {
-            int lastIndex = connectionLines.Count - 1;
+            int lastIndex = currentLoopLines.Count - 1;
             
-            if (connectionLines[lastIndex] != null)
+            if (currentLoopLineObjects[lastIndex] != null)
             {
-                Destroy(lineObjects[lastIndex]);
+                Destroy(currentLoopLineObjects[lastIndex]);
             }
             
-            connectionLines.RemoveAt(lastIndex);
-            lineObjects.RemoveAt(lastIndex);
+            currentLoopLines.RemoveAt(lastIndex);
+            currentLoopLineObjects.RemoveAt(lastIndex);
             
             if (debugMode)
-                Debug.Log("LineConnectionHandler: Removed last line");
+                Debug.Log("LineConnectionHandler: Removed last current loop line");
         }
     }
     
@@ -211,17 +396,29 @@ public class LineConnectionHandler_MRTK3 : MonoBehaviour
     
     public void ClearAllLines()
     {
-        foreach (GameObject lineObj in lineObjects)
+        // Clear current loop lines
+        foreach (GameObject lineObj in currentLoopLineObjects)
         {
             if (lineObj != null)
                 Destroy(lineObj);
         }
+        currentLoopLines.Clear();
+        currentLoopLineObjects.Clear();
         
-        connectionLines.Clear();
-        lineObjects.Clear();
+        // Clear completed loop lines
+        foreach (var loopLineObjList in loopLineObjects)
+        {
+            foreach (GameObject lineObj in loopLineObjList)
+            {
+                if (lineObj != null)
+                    Destroy(lineObj);
+            }
+        }
+        loopLines.Clear();
+        loopLineObjects.Clear();
         
         if (debugMode)
-            Debug.Log("LineConnectionHandler: Cleared all lines");
+            Debug.Log("LineConnectionHandler: Cleared all lines and loops");
     }
     
     public void ToggleLineVisibility()
@@ -249,25 +446,52 @@ public class LineConnectionHandler_MRTK3 : MonoBehaviour
         UpdateConnectionLines();
         
         if (debugMode)
-            Debug.Log("LineConnectionHandler: Forced line update");
+            Debug.Log("LineConnectionHandler: Forced line update for all loops");
     }
     
     public int GetLineCount()
     {
-        return connectionLines.Count;
+        int totalLines = currentLoopLines.Count;
+        
+        foreach (var loopLineList in loopLines)
+        {
+            totalLines += loopLineList.Count;
+        }
+        
+        return totalLines;
+    }
+    
+    public int GetCompletedLoopCount()
+    {
+        return loopLines.Count;
     }
     
     public List<Vector3[]> GetAllLineSegments()
     {
         List<Vector3[]> segments = new List<Vector3[]>();
         
-        foreach (LineRenderer line in connectionLines)
+        // Add current loop line segments
+        foreach (LineRenderer line in currentLoopLines)
         {
             if (line != null)
             {
                 Vector3[] positions = new Vector3[line.positionCount];
                 line.GetPositions(positions);
                 segments.Add(positions);
+            }
+        }
+        
+        // Add completed loop line segments
+        foreach (var loopLineList in loopLines)
+        {
+            foreach (LineRenderer line in loopLineList)
+            {
+                if (line != null)
+                {
+                    Vector3[] positions = new Vector3[line.positionCount];
+                    line.GetPositions(positions);
+                    segments.Add(positions);
+                }
             }
         }
         
@@ -282,10 +506,20 @@ public class LineConnectionHandler_MRTK3 : MonoBehaviour
     
     void OnDestroy()
     {
+        // Unsubscribe from events
+        if (dotHandler != null)
+        {
+            dotHandler.OnLoopClosed -= OnLoopClosed;
+            dotHandler.OnNewLoopStarted -= OnNewLoopStarted;
+        }
+        
         // Clean up
         ClearAllLines();
         
         if (lineMaterial != null && lineMaterial.name == "DefaultLineMaterial")
             Destroy(lineMaterial);
+            
+        if (closedLoopLineMaterial != null && closedLoopLineMaterial.name == "DefaultClosedLoopLineMaterial")
+            Destroy(closedLoopLineMaterial);
     }
 }

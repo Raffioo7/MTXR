@@ -1570,7 +1570,7 @@ PrefabInstance:
     m_Modifications:
     - target: {fileID: 2244185731031694095, guid: cd0f0697f0939504389ec612388f609a, type: 3}
       propertyPath: m_Name
-      value: PressableButton_32x32mm_IconOnly (ExportDots) (1)
+      value: PressableButton_32x32mm_IconOnly (ForceCloseLoop)
       objectReference: {fileID: 0}
     - target: {fileID: 2244185731585867246, guid: cd0f0697f0939504389ec612388f609a, type: 3}
       propertyPath: m_LocalScale.x
@@ -3978,7 +3978,7 @@ PrefabInstance:
     m_Modifications:
     - target: {fileID: 2244185731031694095, guid: cd0f0697f0939504389ec612388f609a, type: 3}
       propertyPath: m_Name
-      value: PressableButton_32x32mm_IconOnly (RemoveLastDot) (1)
+      value: PressableButton_32x32mm_IconOnly (HideLines)
       objectReference: {fileID: 0}
     - target: {fileID: 2244185731585867246, guid: cd0f0697f0939504389ec612388f609a, type: 3}
       propertyPath: m_LocalScale.x
@@ -6302,7 +6302,7 @@ PrefabInstance:
     m_Modifications:
     - target: {fileID: 2244185731031694095, guid: cd0f0697f0939504389ec612388f609a, type: 3}
       propertyPath: m_Name
-      value: PressableButton_32x32mm_IconOnly (HideDots) (1)
+      value: PressableButton_32x32mm_IconOnly (RemoveLastLoop)
       objectReference: {fileID: 0}
     - target: {fileID: 2244185731585867246, guid: cd0f0697f0939504389ec612388f609a, type: 3}
       propertyPath: m_LocalScale.x
@@ -7452,8 +7452,11 @@ MonoBehaviour:
   dotPlacementButton: {fileID: 7108976}
   dotPrefab: {fileID: 0}
   dotColor: {r: 1, g: 0, b: 0, a: 1}
+  firstDotColor: {r: 0, g: 1, b: 0, a: 1}
   dotSize: 0.04
+  firstDotSizeMultiplier: 1.5
   surfaceOffset: 0.001
+  dotClickThreshold: 0.05
   labelSpacing: 1
   labelFontSize: 1.2
   labelColor: {r: 1, g: 1, b: 1, a: 1}
@@ -7476,8 +7479,11 @@ MonoBehaviour:
   exportPositionsButton: {fileID: 1646019398}
   toggleVisibilityButton: {fileID: 1864235144}
   toggleLinesButton: {fileID: 505908093}
-  toggleAutoDrawButton: {fileID: 1267503829}
-  updateLinesButton: {fileID: 745453729}
+  toggleAutoDrawButton: {fileID: 0}
+  updateLinesButton: {fileID: 0}
+  forceCloseLoopButton: {fileID: 1267503829}
+  startNewLoopButton: {fileID: 0}
+  clearLastLoopButton: {fileID: 745453729}
   debugMode: 1
 --- !u!114 &1849552046
 MonoBehaviour:
@@ -7492,8 +7498,10 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   lineMaterial: {fileID: 0}
+  closedLoopLineMaterial: {fileID: 0}
   lineWidth: 0.01
   lineColor: {r: 0, g: 0, b: 1, a: 1}
+  closedLoopColor: {r: 0, g: 1, b: 1, a: 1}
   autoDrawLines: 1
   linesParent: {fileID: 0}
   debugMode: 1

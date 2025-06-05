@@ -17,11 +17,20 @@ public class DotPlacementHandler_MRTK3 : MonoBehaviour
     [Tooltip("Default dot color")]
     public Color dotColor = Color.red;
     
+    [Tooltip("Color for the first dot in each loop")]
+    public Color firstDotColor = Color.green;
+    
     [Tooltip("Default dot size")]
     public float dotSize = 0.02f;
     
+    [Tooltip("Size multiplier for the first dot in each loop")]
+    public float firstDotSizeMultiplier = 1.5f;
+    
     [Tooltip("Offset from surface to prevent z-fighting")]
     public float surfaceOffset = 0.001f;
+    
+    [Tooltip("Distance threshold for detecting clicks on existing dots")]
+    public float dotClickThreshold = 0.05f;
     
     [Header("Label Settings")]
     [Tooltip("Vertical spacing of number label from dot")]
@@ -43,15 +52,22 @@ public class DotPlacementHandler_MRTK3 : MonoBehaviour
     // Private fields
     private bool isPlacementModeActive = false;
     private PropertyClickHandler_MRTK3 propertyHandler;
-    private List<GameObject> placedDots = new List<GameObject>();
+    private List<List<GameObject>> dotLoops = new List<List<GameObject>>(); // Changed to support multiple loops
+    private List<GameObject> currentLoop = new List<GameObject>(); // Current loop being drawn
     private GameObject currentHighlightedObject;
     
     // Store previous values for change detection
     private Color previousDotColor;
+    private Color previousFirstDotColor;
     private float previousDotSize;
+    private float previousFirstDotSizeMultiplier;
     private float previousLabelSpacing;
     private float previousLabelFontSize;
     private Color previousLabelColor;
+    
+    // Events for loop management
+    public System.Action<int> OnLoopClosed;
+    public System.Action<int> OnNewLoopStarted;
     
     void Start()
     {
@@ -78,7 +94,9 @@ public class DotPlacementHandler_MRTK3 : MonoBehaviour
         
         // Initialize previous values
         previousDotColor = dotColor;
+        previousFirstDotColor = firstDotColor;
         previousDotSize = dotSize;
+        previousFirstDotSizeMultiplier = firstDotSizeMultiplier;
         previousLabelSpacing = labelSpacing;
         previousLabelFontSize = labelFontSize;
         previousLabelColor = labelColor;
@@ -254,9 +272,21 @@ public class DotPlacementHandler_MRTK3 : MonoBehaviour
             needsUpdate = true;
         }
         
+        if (firstDotColor != previousFirstDotColor)
+        {
+            previousFirstDotColor = firstDotColor;
+            needsUpdate = true;
+        }
+        
         if (Mathf.Abs(dotSize - previousDotSize) > 0.0001f)
         {
             previousDotSize = dotSize;
+            needsUpdate = true;
+        }
+        
+        if (Mathf.Abs(firstDotSizeMultiplier - previousFirstDotSizeMultiplier) > 0.0001f)
+        {
+            previousFirstDotSizeMultiplier = firstDotSizeMultiplier;
             needsUpdate = true;
         }
         
@@ -287,29 +317,26 @@ public class DotPlacementHandler_MRTK3 : MonoBehaviour
     
     void UpdateAllDots()
     {
-        for (int i = 0; i < placedDots.Count; i++)
+        for (int loopIndex = 0; loopIndex < dotLoops.Count; loopIndex++)
         {
-            GameObject dot = placedDots[i];
+            var loop = dotLoops[loopIndex];
+            for (int dotIndex = 0; dotIndex < loop.Count; dotIndex++)
+            {
+                GameObject dot = loop[dotIndex];
+                if (dot != null)
+                {
+                    UpdateDotAppearance(dot, dotIndex == 0);
+                }
+            }
+        }
+        
+        // Update current loop
+        for (int i = 0; i < currentLoop.Count; i++)
+        {
+            GameObject dot = currentLoop[i];
             if (dot != null)
             {
-                // Update dot size
-                dot.transform.localScale = Vector3.one * dotSize;
-                
-                // Update dot color
-                Renderer renderer = dot.GetComponent<Renderer>();
-                if (renderer != null && renderer.material != null)
-                {
-                    renderer.material.color = dotColor;
-                }
-                
-                // Update label
-                TextMeshPro label = dot.GetComponentInChildren<TextMeshPro>();
-                if (label != null)
-                {
-                    label.transform.localPosition = Vector3.up * labelSpacing;
-                    label.fontSize = labelFontSize;
-                    label.color = labelColor;
-                }
+                UpdateDotAppearance(dot, i == 0);
             }
         }
         
@@ -322,6 +349,29 @@ public class DotPlacementHandler_MRTK3 : MonoBehaviour
             {
                 prefabRenderer.material.color = dotColor;
             }
+        }
+    }
+    
+    void UpdateDotAppearance(GameObject dot, bool isFirstDot)
+    {
+        // Update dot size
+        float size = isFirstDot ? dotSize * firstDotSizeMultiplier : dotSize;
+        dot.transform.localScale = Vector3.one * size;
+        
+        // Update dot color
+        Renderer renderer = dot.GetComponent<Renderer>();
+        if (renderer != null && renderer.material != null)
+        {
+            renderer.material.color = isFirstDot ? firstDotColor : dotColor;
+        }
+        
+        // Update label
+        TextMeshPro label = dot.GetComponentInChildren<TextMeshPro>();
+        if (label != null)
+        {
+            label.transform.localPosition = Vector3.up * labelSpacing;
+            label.fontSize = labelFontSize;
+            label.color = labelColor;
         }
     }
     
@@ -348,7 +398,15 @@ public class DotPlacementHandler_MRTK3 : MonoBehaviour
         Ray ray = Camera.main.ScreenPointToRay(Input.mousePosition);
         RaycastHit hit;
         
-        // Only raycast against the currently highlighted object
+        // Check if we clicked on an existing dot first
+        GameObject clickedDot = GetClickedDot(ray);
+        if (clickedDot != null)
+        {
+            HandleDotClick(clickedDot);
+            return;
+        }
+        
+        // Only raycast against the currently highlighted object for new dot placement
         if (Physics.Raycast(ray, out hit))
         {
             // Check if we hit the currently highlighted object
@@ -359,24 +417,118 @@ public class DotPlacementHandler_MRTK3 : MonoBehaviour
         }
     }
     
+    GameObject GetClickedDot(Ray ray)
+    {
+        // Check current loop first
+        foreach (GameObject dot in currentLoop)
+        {
+            if (dot != null && IsRayNearDot(ray, dot.transform.position))
+            {
+                return dot;
+            }
+        }
+        
+        // Check completed loops
+        foreach (var loop in dotLoops)
+        {
+            foreach (GameObject dot in loop)
+            {
+                if (dot != null && IsRayNearDot(ray, dot.transform.position))
+                {
+                    return dot;
+                }
+            }
+        }
+        
+        return null;
+    }
+    
+    bool IsRayNearDot(Ray ray, Vector3 dotPosition)
+    {
+        Vector3 closestPoint = ray.origin + Vector3.Project(dotPosition - ray.origin, ray.direction);
+        float distance = Vector3.Distance(closestPoint, dotPosition);
+        return distance <= dotClickThreshold;
+    }
+    
+    void HandleDotClick(GameObject clickedDot)
+    {
+        // Check if it's the first dot of the current loop (to close the loop)
+        if (currentLoop.Count > 2 && clickedDot == currentLoop[0])
+        {
+            CloseCurrentLoop();
+        }
+        else if (debugMode)
+        {
+            Debug.Log($"DotPlacementHandler: Clicked on dot {clickedDot.name}");
+        }
+    }
+    
+    void CloseCurrentLoop()
+    {
+        if (currentLoop.Count < 3)
+        {
+            if (debugMode)
+                Debug.LogWarning("DotPlacementHandler: Need at least 3 dots to close a loop");
+            return;
+        }
+        
+        // Add current loop to completed loops
+        dotLoops.Add(new List<GameObject>(currentLoop));
+        int loopIndex = dotLoops.Count - 1;
+        
+        // Rename dots to include loop information
+        for (int i = 0; i < currentLoop.Count; i++)
+        {
+            currentLoop[i].name = $"Loop{loopIndex + 1}_Dot{i + 1}";
+        }
+        
+        if (debugMode)
+            Debug.Log($"DotPlacementHandler: Closed loop {loopIndex + 1} with {currentLoop.Count} dots");
+        
+        // Trigger event
+        OnLoopClosed?.Invoke(loopIndex);
+        
+        // Start a new loop
+        StartNewLoop();
+    }
+    
+    void StartNewLoop()
+    {
+        currentLoop.Clear();
+        int newLoopIndex = dotLoops.Count;
+        
+        if (debugMode)
+            Debug.Log($"DotPlacementHandler: Started new loop {newLoopIndex + 1}");
+        
+        // Trigger event
+        OnNewLoopStarted?.Invoke(newLoopIndex);
+    }
+    
     void PlaceDotAtPosition(Vector3 position, Vector3 normal)
     {
         // Create a new dot instance
         GameObject newDot = Instantiate(dotPrefab, position + normal * surfaceOffset, Quaternion.identity, dotsParent);
         newDot.SetActive(true);
-        newDot.name = $"Dot_{placedDots.Count + 1}";
+        
+        bool isFirstDot = currentLoop.Count == 0;
+        int dotNumber = currentLoop.Count + 1;
+        
+        newDot.name = $"TempLoop_Dot{dotNumber}";
         
         // Optional: Make the dot face along the surface normal
         newDot.transform.up = normal;
         
-        // Add to our list
-        placedDots.Add(newDot);
+        // Add to current loop
+        currentLoop.Add(newDot);
         
-        // Optional: Add a label showing dot number
-        AddDotLabel(newDot, placedDots.Count);
+        // Update appearance based on whether it's the first dot
+        UpdateDotAppearance(newDot, isFirstDot);
+        
+        // Add a label showing dot number
+        AddDotLabel(newDot, dotNumber);
         
         if (debugMode)
-            Debug.Log($"DotPlacementHandler: Placed dot #{placedDots.Count} at {position} on {currentHighlightedObject.name}");
+            Debug.Log($"DotPlacementHandler: Placed dot #{dotNumber} at {position} on {currentHighlightedObject.name}");
     }
     
     void AddDotLabel(GameObject dot, int dotNumber)
@@ -400,50 +552,133 @@ public class DotPlacementHandler_MRTK3 : MonoBehaviour
     // Public methods for managing dots
     public void ClearAllDots()
     {
-        foreach (GameObject dot in placedDots)
+        // Clear completed loops
+        foreach (var loop in dotLoops)
+        {
+            foreach (GameObject dot in loop)
+            {
+                if (dot != null)
+                    Destroy(dot);
+            }
+        }
+        dotLoops.Clear();
+        
+        // Clear current loop
+        foreach (GameObject dot in currentLoop)
         {
             if (dot != null)
                 Destroy(dot);
         }
-        placedDots.Clear();
+        currentLoop.Clear();
         
         if (debugMode)
-            Debug.Log("DotPlacementHandler: Cleared all dots");
+            Debug.Log("DotPlacementHandler: Cleared all dots and loops");
     }
     
     public void RemoveLastDot()
     {
-        if (placedDots.Count > 0)
+        if (currentLoop.Count > 0)
         {
-            GameObject lastDot = placedDots[placedDots.Count - 1];
-            placedDots.RemoveAt(placedDots.Count - 1);
+            GameObject lastDot = currentLoop[currentLoop.Count - 1];
+            currentLoop.RemoveAt(currentLoop.Count - 1);
             
             if (lastDot != null)
                 Destroy(lastDot);
             
             if (debugMode)
-                Debug.Log("DotPlacementHandler: Removed last dot");
+                Debug.Log("DotPlacementHandler: Removed last dot from current loop");
+        }
+        else if (dotLoops.Count > 0)
+        {
+            // If no dots in current loop, remove the last completed loop
+            var lastLoop = dotLoops[dotLoops.Count - 1];
+            foreach (GameObject dot in lastLoop)
+            {
+                if (dot != null)
+                    Destroy(dot);
+            }
+            dotLoops.RemoveAt(dotLoops.Count - 1);
+            
+            if (debugMode)
+                Debug.Log("DotPlacementHandler: Removed last completed loop");
         }
     }
     
     public List<Vector3> GetAllDotPositions()
     {
         List<Vector3> positions = new List<Vector3>();
-        foreach (GameObject dot in placedDots)
+        
+        // Add positions from completed loops
+        foreach (var loop in dotLoops)
+        {
+            foreach (GameObject dot in loop)
+            {
+                if (dot != null)
+                    positions.Add(dot.transform.position);
+            }
+        }
+        
+        // Add positions from current loop
+        foreach (GameObject dot in currentLoop)
         {
             if (dot != null)
                 positions.Add(dot.transform.position);
         }
+        
         return positions;
+    }
+    
+    public List<List<Vector3>> GetAllLoopPositions()
+    {
+        List<List<Vector3>> allLoops = new List<List<Vector3>>();
+        
+        // Add completed loops
+        foreach (var loop in dotLoops)
+        {
+            List<Vector3> loopPositions = new List<Vector3>();
+            foreach (GameObject dot in loop)
+            {
+                if (dot != null)
+                    loopPositions.Add(dot.transform.position);
+            }
+            if (loopPositions.Count > 0)
+                allLoops.Add(loopPositions);
+        }
+        
+        // Add current loop if it has dots
+        if (currentLoop.Count > 0)
+        {
+            List<Vector3> currentLoopPositions = new List<Vector3>();
+            foreach (GameObject dot in currentLoop)
+            {
+                if (dot != null)
+                    currentLoopPositions.Add(dot.transform.position);
+            }
+            allLoops.Add(currentLoopPositions);
+        }
+        
+        return allLoops;
+    }
+    
+    public int GetCompletedLoopCount()
+    {
+        return dotLoops.Count;
+    }
+    
+    public int GetCurrentLoopDotCount()
+    {
+        return currentLoop.Count;
     }
     
     void OnValidate()
     {
         // Ensure positive values
         dotSize = Mathf.Max(0.001f, dotSize);
+        firstDotSizeMultiplier = Mathf.Max(0.1f, firstDotSizeMultiplier);
         surfaceOffset = Mathf.Max(0.0001f, surfaceOffset);
         labelSpacing = Mathf.Max(0.001f, labelSpacing);
         labelFontSize = Mathf.Max(0.1f, labelFontSize);
+        dotClickThreshold = Mathf.Max(0.001f, dotClickThreshold);
     }
     
     void OnDestroy()
