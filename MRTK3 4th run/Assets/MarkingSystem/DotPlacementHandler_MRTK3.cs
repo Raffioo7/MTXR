@@ -32,15 +32,15 @@ public class DotPlacementHandler_MRTK3 : MonoBehaviour
     [Tooltip("Distance threshold for detecting clicks on existing dots")]
     public float dotClickThreshold = 0.05f;
     
-    [Header("Label Settings")]
-    [Tooltip("Vertical spacing of number label from dot")]
-    public float labelSpacing = 0.04f;
-    
-    [Tooltip("Label font size")]
-    public float labelFontSize = 1f;
-    
-    [Tooltip("Label color")]
-    public Color labelColor = Color.white;
+    // [Header("Label Settings")]
+    // [Tooltip("Vertical spacing of number label from dot")]
+    // public float labelSpacing = 0.04f;
+    //
+    // [Tooltip("Label font size")]
+    // public float labelFontSize = 1f;
+    //
+    // [Tooltip("Label color")]
+    // public Color labelColor = Color.white;
     
     [Header("Dot Management")]
     [Tooltip("Parent object for all placed dots")]
@@ -60,10 +60,10 @@ public class DotPlacementHandler_MRTK3 : MonoBehaviour
     private Color previousDotColor;
     private Color previousFirstDotColor;
     private float previousDotSize;
-    private float previousFirstDotSizeMultiplier;
-    private float previousLabelSpacing;
-    private float previousLabelFontSize;
-    private Color previousLabelColor;
+    private float previousFirstDotSizeMultiplier; 
+    // private float previousLabelSpacing;
+    // private float previousLabelFontSize;
+    // private Color previousLabelColor;
     
     // Events for loop management
     public System.Action<int> OnLoopClosed;
@@ -97,9 +97,9 @@ public class DotPlacementHandler_MRTK3 : MonoBehaviour
         previousFirstDotColor = firstDotColor;
         previousDotSize = dotSize;
         previousFirstDotSizeMultiplier = firstDotSizeMultiplier;
-        previousLabelSpacing = labelSpacing;
-        previousLabelFontSize = labelFontSize;
-        previousLabelColor = labelColor;
+        //previousLabelSpacing = labelSpacing;
+        //previousLabelFontSize = labelFontSize;
+        //previousLabelColor = labelColor;
         
         // Hook into the button's functionality
         SetupDotPlacementButton();
@@ -290,7 +290,7 @@ public class DotPlacementHandler_MRTK3 : MonoBehaviour
             needsUpdate = true;
         }
         
-        if (Mathf.Abs(labelSpacing - previousLabelSpacing) > 0.0001f)
+        /*if (Mathf.Abs(labelSpacing - previousLabelSpacing) > 0.0001f)
         {
             previousLabelSpacing = labelSpacing;
             needsUpdate = true;
@@ -306,7 +306,7 @@ public class DotPlacementHandler_MRTK3 : MonoBehaviour
         {
             previousLabelColor = labelColor;
             needsUpdate = true;
-        }
+        }*/
         
         // Update all existing dots if any parameter changed
         if (needsUpdate)
@@ -366,13 +366,13 @@ public class DotPlacementHandler_MRTK3 : MonoBehaviour
         }
         
         // Update label
-        TextMeshPro label = dot.GetComponentInChildren<TextMeshPro>();
-        if (label != null)
-        {
-            label.transform.localPosition = Vector3.up * labelSpacing;
-            label.fontSize = labelFontSize;
-            label.color = labelColor;
-        }
+        // TextMeshPro label = dot.GetComponentInChildren<TextMeshPro>();
+        // if (label != null)
+        // {
+        //     label.transform.localPosition = Vector3.up * labelSpacing;
+        //     label.fontSize = labelFontSize;
+        //     label.color = labelColor;
+        // }
     }
     
     GameObject GetCurrentlyHighlightedObject()
@@ -525,13 +525,13 @@ public class DotPlacementHandler_MRTK3 : MonoBehaviour
         UpdateDotAppearance(newDot, isFirstDot);
         
         // Add a label showing dot number
-        AddDotLabel(newDot, dotNumber);
+        //AddDotLabel(newDot, dotNumber);
         
         if (debugMode)
             Debug.Log($"DotPlacementHandler: Placed dot #{dotNumber} at {position} on {currentHighlightedObject.name}");
     }
     
-    void AddDotLabel(GameObject dot, int dotNumber)
+    /*void AddDotLabel(GameObject dot, int dotNumber)
     {
         // Create a text label for the dot
         GameObject labelObj = new GameObject($"Label_{dotNumber}");
@@ -547,7 +547,7 @@ public class DotPlacementHandler_MRTK3 : MonoBehaviour
         
         // Make the label always face the camera
         labelObj.AddComponent<FaceCamera>();
-    }
+    }*/
     
     // Public methods for managing dots
     public void ClearAllDots()
@@ -676,8 +676,8 @@ public class DotPlacementHandler_MRTK3 : MonoBehaviour
         dotSize = Mathf.Max(0.001f, dotSize);
         firstDotSizeMultiplier = Mathf.Max(0.1f, firstDotSizeMultiplier);
         surfaceOffset = Mathf.Max(0.0001f, surfaceOffset);
-        labelSpacing = Mathf.Max(0.001f, labelSpacing);
-        labelFontSize = Mathf.Max(0.1f, labelFontSize);
+        //labelSpacing = Mathf.Max(0.001f, labelSpacing);
+        //labelFontSize = Mathf.Max(0.1f, labelFontSize);
         dotClickThreshold = Mathf.Max(0.001f, dotClickThreshold);
     }
     

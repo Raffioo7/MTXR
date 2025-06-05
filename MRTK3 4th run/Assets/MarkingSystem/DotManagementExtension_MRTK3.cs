@@ -21,18 +21,18 @@ public class DotManagementExtension_MRTK3 : MonoBehaviour
     [Tooltip("Button to toggle line visibility")]
     public GameObject toggleLinesButton;
     
-    [Tooltip("Button to toggle auto-draw lines")]
-    public GameObject toggleAutoDrawButton;
-    
-    [Tooltip("Button to manually update lines")]
-    public GameObject updateLinesButton;
+    // [Tooltip("Button to toggle auto-draw lines")]
+    // public GameObject toggleAutoDrawButton;
+    //
+    // [Tooltip("Button to manually update lines")]
+    // public GameObject updateLinesButton;
     
     [Header("Loop Management Buttons")]
     [Tooltip("Button to force close current loop")]
     public GameObject forceCloseLoopButton;
     
-    [Tooltip("Button to start new loop without closing current")]
-    public GameObject startNewLoopButton;
+    //[Tooltip("Button to start new loop without closing current")]
+    //public GameObject startNewLoopButton;
     
     [Tooltip("Button to clear only the last completed loop")]
     public GameObject clearLastLoopButton;
@@ -41,11 +41,11 @@ public class DotManagementExtension_MRTK3 : MonoBehaviour
     [Tooltip("Button to toggle shaded area visibility")]
     public GameObject toggleShadingButton;
     
-    [Tooltip("Button to toggle auto-shading for new loops")]
-    public GameObject toggleAutoShadingButton;
-    
-    [Tooltip("Button to manually update all shaded areas")]
-    public GameObject updateShadingButton;
+    // [Tooltip("Button to toggle auto-shading for new loops")]
+    // public GameObject toggleAutoShadingButton;
+    //
+    // [Tooltip("Button to manually update all shaded areas")]
+    // public GameObject updateShadingButton;
     
     [Header("Debug")]
     public bool debugMode = true;
@@ -157,7 +157,7 @@ public class DotManagementExtension_MRTK3 : MonoBehaviour
             Debug.LogWarning("DotManagementExtension: Toggle Lines button not assigned");
         }
         
-        if (toggleAutoDrawButton != null)
+        /*if (toggleAutoDrawButton != null)
         {
             SetupButton(toggleAutoDrawButton, ToggleAutoDraw, "Toggle Auto Draw");
         }
@@ -173,7 +173,7 @@ public class DotManagementExtension_MRTK3 : MonoBehaviour
         else if (debugMode)
         {
             Debug.LogWarning("DotManagementExtension: Update Lines button not assigned");
-        }
+        }*/
         
         // Set up new loop management buttons
         if (forceCloseLoopButton != null)
@@ -185,14 +185,14 @@ public class DotManagementExtension_MRTK3 : MonoBehaviour
             Debug.LogWarning("DotManagementExtension: Force Close Loop button not assigned");
         }
         
-        if (startNewLoopButton != null)
-        {
-            SetupButton(startNewLoopButton, StartNewLoop, "Start New Loop");
-        }
-        else if (debugMode)
-        {
-            Debug.LogWarning("DotManagementExtension: Start New Loop button not assigned");
-        }
+        // if (startNewLoopButton != null)
+        // {
+        //     SetupButton(startNewLoopButton, StartNewLoop, "Start New Loop");
+        // }
+        // else if (debugMode)
+        // {
+        //     Debug.LogWarning("DotManagementExtension: Start New Loop button not assigned");
+        // }
         
         if (clearLastLoopButton != null)
         {
@@ -213,7 +213,7 @@ public class DotManagementExtension_MRTK3 : MonoBehaviour
             Debug.LogWarning("DotManagementExtension: Toggle Shading button not assigned");
         }
         
-        if (toggleAutoShadingButton != null)
+        /*if (toggleAutoShadingButton != null)
         {
             SetupButton(toggleAutoShadingButton, ToggleAutoShading, "Toggle Auto Shading");
         }
@@ -229,7 +229,7 @@ public class DotManagementExtension_MRTK3 : MonoBehaviour
         else if (debugMode)
         {
             Debug.LogWarning("DotManagementExtension: Update Shading button not assigned");
-        }
+        }*/
     }
     
     void SetupButton(GameObject buttonObj, UnityEngine.Events.UnityAction action, string buttonName)
@@ -624,9 +624,9 @@ public class DotManagementExtension_MRTK3 : MonoBehaviour
     {
         UpdateToggleButtonVisual(toggleVisibilityButton, dotsVisible);
         UpdateToggleButtonVisual(toggleLinesButton, linesVisible);
-        UpdateToggleButtonVisual(toggleAutoDrawButton, autoDrawEnabled);
+        //UpdateToggleButtonVisual(toggleAutoDrawButton, autoDrawEnabled);
         UpdateToggleButtonVisual(toggleShadingButton, shadingVisible);
-        UpdateToggleButtonVisual(toggleAutoShadingButton, autoShadingEnabled);
+        //UpdateToggleButtonVisual(toggleAutoShadingButton, autoShadingEnabled);
         
         // Update loop-specific button visuals
         UpdateLoopButtonVisuals();
@@ -707,17 +707,17 @@ public class DotManagementExtension_MRTK3 : MonoBehaviour
         if (toggleLinesButton != null)
             UnsubscribeFromButton(toggleLinesButton, ToggleLineVisibility);
             
-        if (toggleAutoDrawButton != null)
-            UnsubscribeFromButton(toggleAutoDrawButton, ToggleAutoDraw);
-            
-        if (updateLinesButton != null)
-            UnsubscribeFromButton(updateLinesButton, UpdateLines);
+        // if (toggleAutoDrawButton != null)
+        //     UnsubscribeFromButton(toggleAutoDrawButton, ToggleAutoDraw);
+        //     
+        // if (updateLinesButton != null)
+        //     UnsubscribeFromButton(updateLinesButton, UpdateLines);
             
         if (forceCloseLoopButton != null)
             UnsubscribeFromButton(forceCloseLoopButton, ForceCloseCurrentLoop);
             
-        if (startNewLoopButton != null)
-            UnsubscribeFromButton(startNewLoopButton, StartNewLoop);
+        /*if (startNewLoopButton != null)
+            UnsubscribeFromButton(startNewLoopButton, StartNewLoop)*/;
             
         if (clearLastLoopButton != null)
             UnsubscribeFromButton(clearLastLoopButton, ClearLastLoop);
@@ -725,11 +725,11 @@ public class DotManagementExtension_MRTK3 : MonoBehaviour
         if (toggleShadingButton != null)
             UnsubscribeFromButton(toggleShadingButton, ToggleShadingVisibility);
             
-        if (toggleAutoShadingButton != null)
-            UnsubscribeFromButton(toggleAutoShadingButton, ToggleAutoShading);
-            
-        if (updateShadingButton != null)
-            UnsubscribeFromButton(updateShadingButton, UpdateShading);
+        // if (toggleAutoShadingButton != null)
+        //     UnsubscribeFromButton(toggleAutoShadingButton, ToggleAutoShading);
+        //     
+        // if (updateShadingButton != null)
+        //     UnsubscribeFromButton(updateShadingButton, UpdateShading);
     }
     
     void UnsubscribeFromButton(GameObject buttonObj, UnityEngine.Events.UnityAction action)
