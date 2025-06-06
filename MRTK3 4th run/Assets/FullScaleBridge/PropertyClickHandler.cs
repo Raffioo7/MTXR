@@ -29,8 +29,13 @@ public class PropertyClickHandler_MRTK3 : MonoBehaviour
     private Material[] originalMaterials;
     private Material[] highlightMaterials;
     
+    // Flag to track if second button mode is active
+    private bool isSecondButtonModeActive = false;
+    
     void Start()
     {
+        // No need to find DotPlacementHandler anymore
+        
         // Hide panel initially
         if (propertyPanel != null)
             propertyPanel.SetActive(false);
@@ -61,6 +66,12 @@ public class PropertyClickHandler_MRTK3 : MonoBehaviour
             
         // Set up MRTK3 interactables on all objects with RevitData
         SetupInteractables();
+    }
+    
+    // Helper method to check if second button mode is active
+    private bool IsSecondButtonModeActive()
+    {
+        return isSecondButtonModeActive;
     }
     
     void SetupUnhighlightButton()
@@ -373,6 +384,14 @@ public class PropertyClickHandler_MRTK3 : MonoBehaviour
         if (debugMode)
             Debug.Log($"OnObjectClicked called for: {clickedObject.name}");
         
+        // Check if second button mode is active - if so, prevent highlighting changes
+        if (IsSecondButtonModeActive())
+        {
+            if (debugMode)
+                Debug.Log("PropertyClickHandler: Second button mode is active, ignoring object selection");
+            return;
+        }
+        
         // Clear previous selection first
         ClearSelection();
         
@@ -571,6 +590,14 @@ public class PropertyClickHandler_MRTK3 : MonoBehaviour
     // Public method that will be called by the unhighlight button
     public void UnhighlightSelected()
     {
+        // Check if second button mode is active - if so, prevent unhighlighting
+        if (IsSecondButtonModeActive())
+        {
+            if (debugMode)
+                Debug.Log("PropertyClickHandler: Cannot unhighlight during second button mode");
+            return;
+        }
+        
         if (debugMode)
             Debug.Log("Unhighlight button pressed");
             
@@ -580,11 +607,14 @@ public class PropertyClickHandler_MRTK3 : MonoBehaviour
     // Public method that will be called by the second button
     public void OnSecondButtonClicked()
     {
+        // Toggle second button mode
+        isSecondButtonModeActive = !isSecondButtonModeActive;
+        
         if (debugMode)
-            Debug.Log("Second button pressed");
+            Debug.Log($"Second button pressed - Mode is now {(isSecondButtonModeActive ? "ACTIVE" : "INACTIVE")}");
             
         // Add your custom functionality here
-        // This button doesn't affect highlighting, just add whatever you want it to do
+        // This button toggles a mode that prevents highlighting changes
     }
     
     // Public method that will be called by the third button
