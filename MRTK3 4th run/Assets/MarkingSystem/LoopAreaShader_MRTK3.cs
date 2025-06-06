@@ -221,7 +221,55 @@ public class LoopAreaShader_MRTK3 : MonoBehaviour
         Mesh mesh = new Mesh();
         mesh.name = "LoopAreaMesh";
         
-        // Calculate the center and normal of the loop
+        // Calculate normal using Newell's method
+        Vector3 normal = CalculateLoopNormal(loopPositions);
+        
+        // Check if polygon is simple (no self-intersections) and convex
+        bool isConvex = IsPolygonConvex(loopPositions, normal);
+        
+        if (isConvex)
+        {
+            // Use simple fan triangulation for convex polygons
+            return GenerateConvexMesh(loopPositions, normal);
+        }
+        else
+        {
+            // Use ear clipping for concave polygons
+            return GenerateConcaveMesh(loopPositions, normal);
+        }
+    }
+    
+    bool IsPolygonConvex(List<Vector3> vertices, Vector3 normal)
+    {
+        int n = vertices.Count;
+        bool hasPositive = false;
+        bool hasNegative = false;
+        
+        for (int i = 0; i < n; i++)
+        {
+            Vector3 a = vertices[i];
+            Vector3 b = vertices[(i + 1) % n];
+            Vector3 c = vertices[(i + 2) % n];
+            
+            Vector3 cross = Vector3.Cross(b - a, c - b);
+            float dot = Vector3.Dot(cross, normal);
+            
+            if (dot > 0.001f) hasPositive = true;
+            if (dot < -0.001f) hasNegative = true;
+            
+            // If we have both positive and negative, it's concave
+            if (hasPositive && hasNegative) return false;
+        }
+        
+        return true;
+    }
+    
+    Mesh GenerateConvexMesh(List<Vector3> loopPositions, Vector3 normal)
+    {
+        Mesh mesh = new Mesh();
+        mesh.name = "LoopAreaMesh_Convex";
+        
+        // Calculate the center
         Vector3 center = Vector3.zero;
         foreach (Vector3 pos in loopPositions)
         {
@@ -229,13 +277,10 @@ public class LoopAreaShader_MRTK3 : MonoBehaviour
         }
         center /= loopPositions.Count;
         
-        // Calculate normal using Newell's method
-        Vector3 normal = CalculateLoopNormal(loopPositions);
-        
         // Create vertices with surface offset
         List<Vector3> vertices = new List<Vector3>();
         
-        // Add the center vertex first (for fan triangulation)
+        // Add the center vertex first
         vertices.Add(center + normal * surfaceOffset);
         
         // Add all the loop vertices
@@ -253,60 +298,17 @@ public class LoopAreaShader_MRTK3 : MonoBehaviour
             
             // Triangle: center -> current vertex -> next vertex
             triangles.Add(0); // Center vertex
-            triangles.Add(i + 1); // Current vertex (offset by 1 because center is at 0)
+            triangles.Add(i + 1); // Current vertex
             triangles.Add(nextIndex + 1); // Next vertex
         }
         
         // Create UVs
-        Vector2[] uvs = new Vector2[vertices.Count];
+        Vector2[] uvs = GenerateUVsFromVertices(vertices.ToArray(), center, normal);
         
-        // UV for center
-        uvs[0] = new Vector2(0.5f, 0.5f);
-        
-        // UVs for loop vertices
-        for (int i = 1; i < vertices.Count; i++)
-        {
-            Vector3 localPos = vertices[i] - center;
-            
-            // Create a coordinate system on the plane
-            Vector3 right = Vector3.Cross(normal, Vector3.up).normalized;
-            if (right.magnitude < 0.001f)
-            {
-                right = Vector3.Cross(normal, Vector3.forward).normalized;
-            }
-            Vector3 forward = Vector3.Cross(right, normal).normalized;
-            
-            // Project onto the plane
-            float u = Vector3.Dot(localPos, right) * 0.5f + 0.5f;
-            float v = Vector3.Dot(localPos, forward) * 0.5f + 0.5f;
-            
-            uvs[i] = new Vector2(u, v);
-        }
-        
-        // If double-sided, create both front and back faces
+        // Apply double-sided if needed
         if (doubleSided)
         {
-            int originalVertexCount = vertices.Count;
-            int originalTriangleCount = triangles.Count;
-            
-            // Duplicate vertices for back face
-            for (int i = 0; i < originalVertexCount; i++)
-            {
-                vertices.Add(vertices[i]);
-            }
-            
-            // Add back face triangles with reversed winding
-            for (int i = 0; i < originalTriangleCount; i += 3)
-            {
-                triangles.Add(triangles[i] + originalVertexCount);
-                triangles.Add(triangles[i + 2] + originalVertexCount);
-                triangles.Add(triangles[i + 1] + originalVertexCount);
-            }
-            
-            // Duplicate UVs
-            List<Vector2> uvList = new List<Vector2>(uvs);
-            uvList.AddRange(uvs);
-            uvs = uvList.ToArray();
+            ApplyDoubleSided(ref vertices, ref triangles, ref uvs);
         }
         
         // Assign to mesh
@@ -319,6 +321,276 @@ public class LoopAreaShader_MRTK3 : MonoBehaviour
         mesh.RecalculateBounds();
         
         return mesh;
+    }
+    
+    Mesh GenerateConcaveMesh(List<Vector3> loopPositions, Vector3 normal)
+    {
+        Mesh mesh = new Mesh();
+        mesh.name = "LoopAreaMesh_Concave";
+        
+        // Create vertices with surface offset
+        List<Vector3> vertices = new List<Vector3>();
+        for (int i = 0; i < loopPositions.Count; i++)
+        {
+            vertices.Add(loopPositions[i] + normal * surfaceOffset);
+        }
+        
+        // Use ear clipping algorithm
+        List<int> triangles = EarClippingTriangulation(vertices, normal);
+        
+        // If ear clipping fails, try constrained Delaunay triangulation
+        if (triangles.Count < (vertices.Count - 2) * 3)
+        {
+            if (debugMode)
+                Debug.LogWarning("LoopAreaShader: Ear clipping failed, using alternative triangulation");
+            triangles = ConstrainedTriangulation(vertices, normal);
+        }
+        
+        // Create UVs
+        Vector2[] uvs = GenerateUVsFromBounds(vertices.ToArray());
+        
+        // Apply double-sided if needed
+        if (doubleSided)
+        {
+            ApplyDoubleSided(ref vertices, ref triangles, ref uvs);
+        }
+        
+        // Assign to mesh
+        mesh.SetVertices(vertices);
+        mesh.SetTriangles(triangles, 0);
+        mesh.uv = uvs;
+        
+        // Calculate normals and bounds
+        mesh.RecalculateNormals();
+        mesh.RecalculateBounds();
+        
+        return mesh;
+    }
+    
+    List<int> EarClippingTriangulation(List<Vector3> vertices, Vector3 normal)
+    {
+        List<int> triangles = new List<int>();
+        List<int> indices = new List<int>();
+        
+        // Initialize indices
+        for (int i = 0; i < vertices.Count; i++)
+        {
+            indices.Add(i);
+        }
+        
+        int iterations = 0;
+        int maxIterations = vertices.Count * 2;
+        
+        while (indices.Count > 3 && iterations < maxIterations)
+        {
+            iterations++;
+            bool earFound = false;
+            
+            for (int i = 0; i < indices.Count; i++)
+            {
+                int prev = indices[(i - 1 + indices.Count) % indices.Count];
+                int curr = indices[i];
+                int next = indices[(i + 1) % indices.Count];
+                
+                if (IsValidEar(vertices, indices, prev, curr, next, normal))
+                {
+                    // Add triangle
+                    triangles.Add(prev);
+                    triangles.Add(curr);
+                    triangles.Add(next);
+                    
+                    // Remove current vertex
+                    indices.RemoveAt(i);
+                    earFound = true;
+                    break;
+                }
+            }
+            
+            if (!earFound)
+            {
+                // If no ear found, break to avoid infinite loop
+                if (debugMode)
+                    Debug.LogWarning("LoopAreaShader: No ear found in iteration " + iterations);
+                break;
+            }
+        }
+        
+        // Add the last triangle if we have exactly 3 vertices left
+        if (indices.Count == 3)
+        {
+            triangles.Add(indices[0]);
+            triangles.Add(indices[1]);
+            triangles.Add(indices[2]);
+        }
+        
+        return triangles;
+    }
+    
+    bool IsValidEar(List<Vector3> vertices, List<int> indices, int prev, int curr, int next, Vector3 normal)
+    {
+        Vector3 a = vertices[prev];
+        Vector3 b = vertices[curr];
+        Vector3 c = vertices[next];
+        
+        // Check if triangle is counter-clockwise
+        Vector3 cross = Vector3.Cross(b - a, c - a);
+        if (Vector3.Dot(cross, normal) < 0)
+        {
+            return false;
+        }
+        
+        // Check if any other vertex is inside the triangle
+        for (int i = 0; i < indices.Count; i++)
+        {
+            int idx = indices[i];
+            if (idx == prev || idx == curr || idx == next)
+                continue;
+            
+            if (IsPointInTriangle(vertices[idx], a, b, c, normal))
+            {
+                return false;
+            }
+        }
+        
+        return true;
+    }
+    
+    bool IsPointInTriangle(Vector3 p, Vector3 a, Vector3 b, Vector3 c, Vector3 normal)
+    {
+        // Project points onto 2D plane perpendicular to normal
+        Vector2 p2d = ProjectTo2D(p, normal);
+        Vector2 a2d = ProjectTo2D(a, normal);
+        Vector2 b2d = ProjectTo2D(b, normal);
+        Vector2 c2d = ProjectTo2D(c, normal);
+        
+        // Use barycentric coordinates
+        float denominator = ((b2d.y - c2d.y) * (a2d.x - c2d.x) + (c2d.x - b2d.x) * (a2d.y - c2d.y));
+        if (Mathf.Abs(denominator) < 0.0001f) return false;
+        
+        float a_weight = ((b2d.y - c2d.y) * (p2d.x - c2d.x) + (c2d.x - b2d.x) * (p2d.y - c2d.y)) / denominator;
+        float b_weight = ((c2d.y - a2d.y) * (p2d.x - c2d.x) + (a2d.x - c2d.x) * (p2d.y - c2d.y)) / denominator;
+        float c_weight = 1 - a_weight - b_weight;
+        
+        // Check if point is inside triangle (with small epsilon for floating point errors)
+        const float epsilon = -0.0001f;
+        return a_weight >= epsilon && b_weight >= epsilon && c_weight >= epsilon;
+    }
+    
+    Vector2 ProjectTo2D(Vector3 point, Vector3 normal)
+    {
+        // Create an orthonormal basis
+        Vector3 right = Vector3.Cross(normal, Vector3.up).normalized;
+        if (right.magnitude < 0.001f)
+        {
+            right = Vector3.Cross(normal, Vector3.forward).normalized;
+        }
+        Vector3 forward = Vector3.Cross(right, normal).normalized;
+        
+        // Project onto the 2D plane
+        return new Vector2(Vector3.Dot(point, right), Vector3.Dot(point, forward));
+    }
+    
+    List<int> ConstrainedTriangulation(List<Vector3> vertices, Vector3 normal)
+    {
+        List<int> triangles = new List<int>();
+        
+        // Simple triangulation by connecting to first vertex
+        // This is a fallback method that works for star-shaped polygons
+        for (int i = 1; i < vertices.Count - 1; i++)
+        {
+            triangles.Add(0);
+            triangles.Add(i);
+            triangles.Add(i + 1);
+        }
+        
+        return triangles;
+    }
+    
+    Vector2[] GenerateUVsFromVertices(Vector3[] vertices, Vector3 center, Vector3 normal)
+    {
+        Vector2[] uvs = new Vector2[vertices.Length];
+        
+        // UV for center (if it exists)
+        uvs[0] = new Vector2(0.5f, 0.5f);
+        
+        // Create a coordinate system on the plane
+        Vector3 right = Vector3.Cross(normal, Vector3.up).normalized;
+        if (right.magnitude < 0.001f)
+        {
+            right = Vector3.Cross(normal, Vector3.forward).normalized;
+        }
+        Vector3 forward = Vector3.Cross(right, normal).normalized;
+        
+        // UVs for loop vertices
+        for (int i = 1; i < vertices.Length; i++)
+        {
+            Vector3 localPos = vertices[i] - center;
+            
+            // Project onto the plane
+            float u = Vector3.Dot(localPos, right) * 0.5f + 0.5f;
+            float v = Vector3.Dot(localPos, forward) * 0.5f + 0.5f;
+            
+            uvs[i] = new Vector2(u, v);
+        }
+        
+        return uvs;
+    }
+    
+    Vector2[] GenerateUVsFromBounds(Vector3[] vertices)
+    {
+        Vector2[] uvs = new Vector2[vertices.Length];
+        
+        // Find bounds
+        float minX = float.MaxValue, maxX = float.MinValue;
+        float minZ = float.MaxValue, maxZ = float.MinValue;
+        
+        foreach (Vector3 v in vertices)
+        {
+            minX = Mathf.Min(minX, v.x);
+            maxX = Mathf.Max(maxX, v.x);
+            minZ = Mathf.Min(minZ, v.z);
+            maxZ = Mathf.Max(maxZ, v.z);
+        }
+        
+        float width = maxX - minX;
+        float height = maxZ - minZ;
+        
+        // Generate normalized UVs
+        for (int i = 0; i < vertices.Length; i++)
+        {
+            float u = width > 0.001f ? (vertices[i].x - minX) / width : 0.5f;
+            float v = height > 0.001f ? (vertices[i].z - minZ) / height : 0.5f;
+            uvs[i] = new Vector2(u, v);
+        }
+        
+        return uvs;
+    }
+    
+    void ApplyDoubleSided(ref List<Vector3> vertices, ref List<int> triangles, ref Vector2[] uvs)
+    {
+        int originalVertexCount = vertices.Count;
+        int originalTriangleCount = triangles.Count;
+        
+        // Duplicate vertices for back face
+        List<Vector3> newVertices = new List<Vector3>(vertices);
+        newVertices.AddRange(vertices);
+        
+        // Add back face triangles with reversed winding
+        List<int> newTriangles = new List<int>(triangles);
+        for (int i = 0; i < originalTriangleCount; i += 3)
+        {
+            newTriangles.Add(triangles[i] + originalVertexCount);
+            newTriangles.Add(triangles[i + 2] + originalVertexCount);
+            newTriangles.Add(triangles[i + 1] + originalVertexCount);
+        }
+        
+        // Duplicate UVs
+        List<Vector2> newUVs = new List<Vector2>(uvs);
+        newUVs.AddRange(uvs);
+        
+        vertices = newVertices;
+        triangles = newTriangles;
+        uvs = newUVs.ToArray();
     }
     
     Vector3 CalculateLoopNormal(List<Vector3> loopPositions)
@@ -437,35 +709,10 @@ public class LoopAreaShader_MRTK3 : MonoBehaviour
     // Alternative mesh generation method using ear clipping (can be toggled)
     public Mesh GenerateLoopMeshEarClipping(List<Vector3> loopPositions)
     {
-        Mesh mesh = new Mesh();
-        mesh.name = "LoopAreaMesh_EarClip";
-        
-        // Calculate normal
+        // This method is now redundant since the main method handles both cases
+        // But keeping it for backward compatibility
         Vector3 normal = CalculateLoopNormal(loopPositions);
-        
-        // Create vertices with surface offset
-        Vector3[] vertices = new Vector3[loopPositions.Count];
-        for (int i = 0; i < loopPositions.Count; i++)
-        {
-            vertices[i] = loopPositions[i] + normal * surfaceOffset;
-        }
-        
-        // Triangulate using ear clipping
-        List<int> triangles = TriangulatePolygon(vertices, normal);
-        
-        // Create UVs
-        Vector2[] uvs = GenerateUVs(vertices);
-        
-        // Assign to mesh
-        mesh.vertices = vertices;
-        mesh.triangles = triangles.ToArray();
-        mesh.uv = uvs;
-        
-        // Calculate normals and bounds
-        mesh.RecalculateNormals();
-        mesh.RecalculateBounds();
-        
-        return mesh;
+        return GenerateConcaveMesh(loopPositions, normal);
     }
     
     List<int> TriangulatePolygon(Vector3[] vertices, Vector3 normal)
@@ -547,7 +794,7 @@ public class LoopAreaShader_MRTK3 : MonoBehaviour
             if (i == prevIdx || i == currIdx || i == nextIdx)
                 continue;
             
-            if (IsPointInTriangle(vertices[indices[i]], a, b, c))
+            if (IsPointInTriangle(vertices[indices[i]], a, b, c, normal))
             {
                 return false;
             }

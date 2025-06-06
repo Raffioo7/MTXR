@@ -196,7 +196,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 2244185731585867246, guid: cd0f0697f0939504389ec612388f609a, type: 3}
       propertyPath: m_LocalPosition.x
-      value: -0.045
+      value: -0.0475
       objectReference: {fileID: 0}
     - target: {fileID: 2244185731585867246, guid: cd0f0697f0939504389ec612388f609a, type: 3}
       propertyPath: m_LocalPosition.y
@@ -5487,7 +5487,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 2244185731585867246, guid: cd0f0697f0939504389ec612388f609a, type: 3}
       propertyPath: m_LocalPosition.x
-      value: -0.045
+      value: -0.0475
       objectReference: {fileID: 0}
     - target: {fileID: 2244185731585867246, guid: cd0f0697f0939504389ec612388f609a, type: 3}
       propertyPath: m_LocalPosition.y
@@ -7575,12 +7575,12 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   dotPlacementButton: {fileID: 7108976}
   dotPrefab: {fileID: 0}
-  dotColor: {r: 1, g: 0, b: 0, a: 1}
-  firstDotColor: {r: 0, g: 1, b: 0, a: 1}
-  dotSize: 0.04
+  dotColor: {r: 0.11764707, g: 0.14117648, b: 0.35686275, a: 1}
+  firstDotColor: {r: 0.38823533, g: 0.5647059, b: 0.8117648, a: 1}
+  dotSize: 0.02
   firstDotSizeMultiplier: 1.5
   surfaceOffset: 0.001
-  dotClickThreshold: 0.05
+  dotClickThreshold: 0.04
   dotsParent: {fileID: 0}
   debugMode: 1
 --- !u!114 &1849552045
@@ -7619,8 +7619,8 @@ MonoBehaviour:
   lineMaterial: {fileID: 0}
   closedLoopLineMaterial: {fileID: 0}
   lineWidth: 0.02
-  lineColor: {r: 0, g: 0, b: 1, a: 1}
-  closedLoopColor: {r: 0, g: 1, b: 0, a: 1}
+  lineColor: {r: 0.38823533, g: 0.5647059, b: 0.8117648, a: 1}
+  closedLoopColor: {r: 0.11764707, g: 0.14117648, b: 0.35686275, a: 1}
   autoDrawLines: 1
   linesParent: {fileID: 0}
   debugMode: 1
@@ -7637,7 +7637,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   shadedAreaMaterial: {fileID: 0}
-  shadedAreaColor: {r: 0.2, g: 0.5, b: 0.8, a: 0.5}
+  shadedAreaColor: {r: 0.38823533, g: 0.5647059, b: 0.8117648, a: 0.5}
   surfaceOffset: 0.0001
   autoShadeOnLoopClose: 1
   shadedAreasParent: {fileID: 0}
