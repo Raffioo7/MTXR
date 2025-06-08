@@ -3707,6 +3707,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   addCollidersOnStart: 1
   addStatefulInteractable: 1
+  useConvexColliders: 0
 --- !u!1001 &1103777924
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -7408,7 +7409,7 @@ MonoBehaviour:
   thirdButton: {fileID: 2091993329}
   clickableLayerMask:
     serializedVersion: 2
-    m_Bits: 4294967295
+    m_Bits: 1
   highlightColor: {r: 0.972549, g: 0.38489234, b: 0, a: 0.6862745}
   highlightEmission: 1
   debugMode: 1
