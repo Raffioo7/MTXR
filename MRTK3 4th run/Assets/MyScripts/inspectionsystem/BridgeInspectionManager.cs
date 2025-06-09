@@ -293,6 +293,18 @@ public class BridgeInspectionManager : MonoBehaviour
     #region Debug and Utility Methods
     
     /// <summary>
+    /// Test method - add sample data to verify your structure works
+    /// Call this from a button to test your categories
+    /// </summary>
+    public void AddSampleData()
+    {
+        // Test with just one simple text entry
+        AddInspectionData("General", "Notes", "Inspector Comments", "This is a test comment from the inspector");
+        
+        Debug.Log("Sample data added - check PrintInspectionSummary()");
+    }
+    
+    /// <summary>
     /// Print current inspection data to console
     /// </summary>
     public void PrintInspectionSummary()
@@ -318,6 +330,12 @@ public class BridgeInspectionManager : MonoBehaviour
         foreach (var cat in categories)
         {
             Debug.Log($"{cat.Key}: {cat.Value} entries");
+        }
+        
+        Debug.Log("--- All Entries ---");
+        foreach (var entry in currentInspection.entries)
+        {
+            Debug.Log($"{entry.category} > {entry.subcategory} > {entry.fieldName}: {entry.value}");
         }
     }
     
