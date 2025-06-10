@@ -178,6 +178,14 @@ PrefabInstance:
     serializedVersion: 3
     m_TransformParent: {fileID: 517439674}
     m_Modifications:
+    - target: {fileID: 371118162448441905, guid: 78bdee278a20cd6489ba466ef91638ed, type: 3}
+      propertyPath: m_LocalScale.x
+      value: 0.13
+      objectReference: {fileID: 0}
+    - target: {fileID: 3392785445088935471, guid: 78bdee278a20cd6489ba466ef91638ed, type: 3}
+      propertyPath: m_LocalScale.x
+      value: 0.13
+      objectReference: {fileID: 0}
     - target: {fileID: 3536724776885516049, guid: 78bdee278a20cd6489ba466ef91638ed, type: 3}
       propertyPath: m_Name
       value: PressableButton_128x32mm_TextOnly Variant 1 (3)
@@ -943,7 +951,7 @@ PrefabInstance:
     m_Modifications:
     - target: {fileID: 2244185731031694095, guid: cd0f0697f0939504389ec612388f609a, type: 3}
       propertyPath: m_Name
-      value: PressableButton_32x32mm_IconOnly (EditEntry)
+      value: PressableButton_32x32mm_IconOnly (SaveEntry)
       objectReference: {fileID: 0}
     - target: {fileID: 2244185731585867246, guid: cd0f0697f0939504389ec612388f609a, type: 3}
       propertyPath: m_LocalScale.x
@@ -999,7 +1007,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 6397459067767180594, guid: cd0f0697f0939504389ec612388f609a, type: 3}
       propertyPath: m_text
-      value: "\uEA49"
+      value: "\uF680"
       objectReference: {fileID: 0}
     - target: {fileID: 6397459067767180594, guid: cd0f0697f0939504389ec612388f609a, type: 3}
       propertyPath: m_sharedMaterial
@@ -1015,7 +1023,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 7797914476011694290, guid: cd0f0697f0939504389ec612388f609a, type: 3}
       propertyPath: currentIconName
-      value: Icon 25
+      value: Icon 129
       objectReference: {fileID: 0}
     - target: {fileID: 7855682163667943843, guid: cd0f0697f0939504389ec612388f609a, type: 3}
       propertyPath: 'm_Materials.Array.data[0]'
@@ -1091,14 +1099,16 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 01bbd956925775a40be8865b81e47bf1, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  inspectionPanel: {fileID: 517439673}
+  inspectionPanel: {fileID: 0}
   button1: {fileID: 3594567805395369577}
   button2: {fileID: 869330375}
   button3: {fileID: 1510957585}
-  togglePanelButton: {fileID: 2091993329}
+  togglePanelButton: {fileID: 0}
   textReader: {fileID: 699511633}
   autoRefreshOnOpen: 1
   newestFirst: 1
+  dateFormat: 0
+  preferInspectionId: 0
 --- !u!4 &451040023
 Transform:
   m_ObjectHideFlags: 0
@@ -2019,6 +2029,14 @@ PrefabInstance:
     serializedVersion: 3
     m_TransformParent: {fileID: 517439674}
     m_Modifications:
+    - target: {fileID: 371118162448441905, guid: 78bdee278a20cd6489ba466ef91638ed, type: 3}
+      propertyPath: m_LocalScale.x
+      value: 0.13
+      objectReference: {fileID: 0}
+    - target: {fileID: 3392785445088935471, guid: 78bdee278a20cd6489ba466ef91638ed, type: 3}
+      propertyPath: m_LocalScale.x
+      value: 0.13
+      objectReference: {fileID: 0}
     - target: {fileID: 3536724776885516049, guid: 78bdee278a20cd6489ba466ef91638ed, type: 3}
       propertyPath: m_Name
       value: PressableButton_128x32mm_TextOnly Variant 1 (2)
@@ -2142,7 +2160,10 @@ MonoBehaviour:
   textField2: {fileID: 1832203414}
   inputField1: {fileID: 1354615890}
   fileName: bridge_inspection
-  saveButtonObject: {fileID: 1134073230}
+  startingNumber: 1
+  numberFormat: 000
+  resetNumbering: 0
+  saveButtonObject: {fileID: 2091993329}
   loadButtonObject: {fileID: 0}
   propertyHandler: {fileID: 1849552043}
   fileToLoad: 
@@ -2554,6 +2575,17 @@ GameObject:
   m_CorrespondingSourceObject: {fileID: 3536724776885516049, guid: 78bdee278a20cd6489ba466ef91638ed, type: 3}
   m_PrefabInstance: {fileID: 677039429}
   m_PrefabAsset: {fileID: 0}
+--- !u!114 &869330383 stripped
+MonoBehaviour:
+  m_CorrespondingSourceObject: {fileID: 8806965433859240716, guid: 78bdee278a20cd6489ba466ef91638ed, type: 3}
+  m_PrefabInstance: {fileID: 677039429}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 869330375}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: c32e8a7644144f8419bb881ad588ed0e, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
 --- !u!4 &869330385 stripped
 Transform:
   m_CorrespondingSourceObject: {fileID: 7972354149372989179, guid: 78bdee278a20cd6489ba466ef91638ed, type: 3}
@@ -2824,7 +2856,7 @@ MonoBehaviour:
   m_CorrespondingSourceObject: {fileID: 1503546110793399400, guid: cd0f0697f0939504389ec612388f609a, type: 3}
   m_PrefabInstance: {fileID: 1793518389}
   m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1134073230}
+  m_GameObject: {fileID: 0}
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: c32e8a7644144f8419bb881ad588ed0e, type: 3}
@@ -4070,11 +4102,6 @@ PrefabInstance:
       insertIndex: -1
       addedObject: {fileID: 0}
   m_SourcePrefab: {fileID: 100100000, guid: cd0f0697f0939504389ec612388f609a, type: 3}
---- !u!1 &1134073230 stripped
-GameObject:
-  m_CorrespondingSourceObject: {fileID: 2244185731031694095, guid: cd0f0697f0939504389ec612388f609a, type: 3}
-  m_PrefabInstance: {fileID: 1793518389}
-  m_PrefabAsset: {fileID: 0}
 --- !u!1 &1134324148
 GameObject:
   m_ObjectHideFlags: 0
@@ -5846,6 +5873,17 @@ GameObject:
   m_CorrespondingSourceObject: {fileID: 3536724776885516049, guid: 78bdee278a20cd6489ba466ef91638ed, type: 3}
   m_PrefabInstance: {fileID: 46194307}
   m_PrefabAsset: {fileID: 0}
+--- !u!114 &1510957593 stripped
+MonoBehaviour:
+  m_CorrespondingSourceObject: {fileID: 8806965433859240716, guid: 78bdee278a20cd6489ba466ef91638ed, type: 3}
+  m_PrefabInstance: {fileID: 46194307}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1510957585}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: c32e8a7644144f8419bb881ad588ed0e, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
 --- !u!4 &1510957595 stripped
 Transform:
   m_CorrespondingSourceObject: {fileID: 7972354149372989179, guid: 78bdee278a20cd6489ba466ef91638ed, type: 3}
@@ -6531,7 +6569,7 @@ PrefabInstance:
     m_Modifications:
     - target: {fileID: 2244185731031694095, guid: cd0f0697f0939504389ec612388f609a, type: 3}
       propertyPath: m_Name
-      value: PressableButton_32x32mm_IconOnly (SaveEntry)
+      value: PressableButton_32x32mm_IconOnly (DeleteEntry)
       objectReference: {fileID: 0}
     - target: {fileID: 2244185731585867246, guid: cd0f0697f0939504389ec612388f609a, type: 3}
       propertyPath: m_LocalScale.x
@@ -6587,7 +6625,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 6397459067767180594, guid: cd0f0697f0939504389ec612388f609a, type: 3}
       propertyPath: m_text
-      value: "\uF680"
+      value: "\uF34D"
       objectReference: {fileID: 0}
     - target: {fileID: 6397459067767180594, guid: cd0f0697f0939504389ec612388f609a, type: 3}
       propertyPath: m_sharedMaterial
@@ -6603,7 +6641,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 7797914476011694290, guid: cd0f0697f0939504389ec612388f609a, type: 3}
       propertyPath: currentIconName
-      value: Icon 129
+      value: Icon 76
       objectReference: {fileID: 0}
     - target: {fileID: 7855682163667943843, guid: cd0f0697f0939504389ec612388f609a, type: 3}
       propertyPath: 'm_Materials.Array.data[0]'
@@ -6728,11 +6766,14 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   toggleButton: {fileID: 2071377578}
-  closeButton: {fileID: 931517580}
+  closeButton: {fileID: 2091993338}
   panel: {fileID: 1134324148}
   additionalButton1: {fileID: 766399356}
   additionalButton2: {fileID: 42975417}
   additionalButton3: {fileID: 931517580}
+  additionalToggleButton1: {fileID: 4186975940905220366}
+  additionalToggleButton2: {fileID: 869330383}
+  additionalToggleButton3: {fileID: 1510957593}
 --- !u!1 &1832203411
 GameObject:
   m_ObjectHideFlags: 0
@@ -7379,6 +7420,8 @@ MonoBehaviour:
   unhighlightButton: {fileID: 142360864}
   secondButton: {fileID: 2071377576}
   thirdButton: {fileID: 2091993329}
+  highlightDependentObject: {fileID: 517439673}
+  thirdButtonPanel: {fileID: 1134324148}
   clickableLayerMask:
     serializedVersion: 2
     m_Bits: 1
@@ -7852,7 +7895,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!114 &2086798497
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -7913,6 +7956,17 @@ Transform:
   m_CorrespondingSourceObject: {fileID: 2244185731585867246, guid: cd0f0697f0939504389ec612388f609a, type: 3}
   m_PrefabInstance: {fileID: 410764655}
   m_PrefabAsset: {fileID: 0}
+--- !u!114 &2091993338 stripped
+MonoBehaviour:
+  m_CorrespondingSourceObject: {fileID: 1503546110793399400, guid: cd0f0697f0939504389ec612388f609a, type: 3}
+  m_PrefabInstance: {fileID: 410764655}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2091993329}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: c32e8a7644144f8419bb881ad588ed0e, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
 --- !u!1 &2126507698
 GameObject:
   m_ObjectHideFlags: 0
@@ -11043,6 +11097,17 @@ Transform:
   m_Children: []
   m_Father: {fileID: 1520382562}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &4186975940905220366 stripped
+MonoBehaviour:
+  m_CorrespondingSourceObject: {fileID: 8806965433859240716, guid: 78bdee278a20cd6489ba466ef91638ed, type: 3}
+  m_PrefabInstance: {fileID: 4259824636789649077}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3594567805395369577}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: c32e8a7644144f8419bb881ad588ed0e, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
 --- !u!33 &4209917240479626476
 MeshFilter:
   m_ObjectHideFlags: 0
@@ -11082,9 +11147,21 @@ PrefabInstance:
     serializedVersion: 3
     m_TransformParent: {fileID: 517439674}
     m_Modifications:
+    - target: {fileID: 371118162448441905, guid: 78bdee278a20cd6489ba466ef91638ed, type: 3}
+      propertyPath: m_LocalScale.x
+      value: 0.13
+      objectReference: {fileID: 0}
+    - target: {fileID: 3392785445088935471, guid: 78bdee278a20cd6489ba466ef91638ed, type: 3}
+      propertyPath: m_LocalScale.x
+      value: 0.13
+      objectReference: {fileID: 0}
     - target: {fileID: 3536724776885516049, guid: 78bdee278a20cd6489ba466ef91638ed, type: 3}
       propertyPath: m_Name
       value: PressableButton_128x32mm_TextOnly Variant 1 (1)
+      objectReference: {fileID: 0}
+    - target: {fileID: 5992657693545330827, guid: 78bdee278a20cd6489ba466ef91638ed, type: 3}
+      propertyPath: m_LocalScale.x
+      value: 0.13
       objectReference: {fileID: 0}
     - target: {fileID: 7972354149372989179, guid: 78bdee278a20cd6489ba466ef91638ed, type: 3}
       propertyPath: m_LocalPosition.x
@@ -11125,6 +11202,22 @@ PrefabInstance:
     - target: {fileID: 7972354149372989179, guid: 78bdee278a20cd6489ba466ef91638ed, type: 3}
       propertyPath: m_LocalEulerAnglesHint.z
       value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 8806965433859240716, guid: 78bdee278a20cd6489ba466ef91638ed, type: 3}
+      propertyPath: <OnClicked>k__BackingField.m_PersistentCalls.m_Calls.Array.size
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 8806965433859240716, guid: 78bdee278a20cd6489ba466ef91638ed, type: 3}
+      propertyPath: <OnClicked>k__BackingField.m_PersistentCalls.m_Calls.Array.data[0].m_Mode
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 8806965433859240716, guid: 78bdee278a20cd6489ba466ef91638ed, type: 3}
+      propertyPath: <OnClicked>k__BackingField.m_PersistentCalls.m_Calls.Array.data[0].m_Target
+      value: 
+      objectReference: {fileID: 0}
+    - target: {fileID: 8806965433859240716, guid: 78bdee278a20cd6489ba466ef91638ed, type: 3}
+      propertyPath: <OnClicked>k__BackingField.m_PersistentCalls.m_Calls.Array.data[0].m_CallState
+      value: 2
       objectReference: {fileID: 0}
     m_RemovedComponents: []
     m_RemovedGameObjects: []
