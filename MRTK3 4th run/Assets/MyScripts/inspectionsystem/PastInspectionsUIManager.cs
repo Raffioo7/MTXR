@@ -8,86 +8,39 @@ using System.Linq;
 using System.Collections.Generic;
 
 /// <summary>
-/// Creates a scrollable list of past inspections that can be selected and loaded
+/// Simple inspection loader with three fixed buttons for the last three inspections
 /// </summary>
-public class InspectionListUI : MonoBehaviour
+public class SimpleInspectionLoader : MonoBehaviour
 {
     [Header("UI References")]
-    [Tooltip("Panel that contains the inspection list")]
-    public GameObject listPanel;
+    [Tooltip("Panel that contains the inspection buttons")]
+    public GameObject inspectionPanel;
     
-    [Tooltip("Parent object where inspection list items will be created")]
-    public Transform listContainer;
+    [Tooltip("Button for the most recent inspection")]
+    public GameObject button1;
     
-    [Tooltip("Prefab for each inspection list item (should have TMP_Text and PressableButton)")]
-    public GameObject listItemPrefab;
+    [Tooltip("Button for the second most recent inspection")]
+    public GameObject button2;
     
-    [Tooltip("Button to open/close the inspection list")]
-    public GameObject toggleListButton;
+    [Tooltip("Button for the third most recent inspection")]
+    public GameObject button3;
     
-    [Tooltip("Button to refresh the list")]
-    public GameObject refreshListButton;
+    [Tooltip("Button to toggle the inspection panel")]
+    public GameObject togglePanelButton;
     
     [Header("Connected Systems")]
     [Tooltip("Reference to your SimpleTextReader script")]
     public SimpleTextReader textReader;
     
-    [Header("List Settings")]
-    [Tooltip("Maximum number of inspections to show")]
-    public int maxInspectionsToShow = 10;
+    [Header("Settings")]
+    [Tooltip("Auto-refresh when panel opens")]
+    public bool autoRefreshOnOpen = true;
     
     [Tooltip("Show newest first")]
     public bool newestFirst = true;
     
-    [Header("Layout Settings")]
-    [Tooltip("Space between list items (XR-optimized)")]
-    [Range(0f, 0.02f)]
-    public float itemSpacing = 0f;
-    
-    [Tooltip("Padding around the list edges (XR-optimized)")]
-    [Range(0f, 0.015f)]
-    public float listPadding = 0f;
-    
-    [Tooltip("Height of each list item (XR-optimized)")]
-    [Range(0.01f, 0.1f)]
-    public float itemHeight = 0.015f;
-    
-    [Tooltip("Update layout in real-time during play")]
-    public bool updateLayoutInRealTime = true;
-    
-    [Header("Clipping Settings")]
-    [Tooltip("Enable/disable bounds checking for list items")]
-    public bool enableBoundsClipping = true;
-    
-    [Tooltip("Clipping mode - how to determine the viewport bounds")]
-    public ClippingMode clippingMode = ClippingMode.UseListPanel;
-    
-    [Tooltip("Reference object that defines the clipping area (only used in Manual mode)")]
-    public Transform clippingBounds;
-    
-    [Tooltip("Size of clipping area (only used in Manual mode)")]
-    public Vector3 clippingSize = new Vector3(1f, 1f, 1f);
-    
-    [Tooltip("Center offset for clipping area")]
-    public Vector3 clippingCenter = Vector3.zero;
-    
-    public enum ClippingMode
-    {
-        UseListPanel,      // Use the listPanel's RectTransform as viewport
-        UseListContainer,  // Use the listContainer's RectTransform as viewport
-        UseScrollViewport, // Look for a parent ScrollRect's viewport
-        Manual            // Use manual clippingBounds reference
-    }
-    
-    private List<GameObject> listItems = new List<GameObject>();
-    private bool isListVisible = false;
-    private UnityEngine.UI.VerticalLayoutGroup layoutGroup;
-    private UnityEngine.UI.ContentSizeFitter sizeFitter;
-    
-    // Store previous values to detect changes
-    private float previousSpacing;
-    private float previousPadding;
-    private float previousHeight;
+    private InspectionFileInfo[] lastThreeInspections;
+    private bool isPanelVisible = false;
     
     void Start()
     {
@@ -95,219 +48,89 @@ public class InspectionListUI : MonoBehaviour
         if (textReader == null)
             textReader = FindObjectOfType<SimpleTextReader>();
         
-        // Hide list initially
-        if (listPanel != null)
-            listPanel.SetActive(false);
+        // Hide panel initially
+        if (inspectionPanel != null)
+            inspectionPanel.SetActive(false);
         
-        // Setup layout for the container with fixed values
-        SetupListLayout();
-        
+        // Setup buttons
         SetupButtons();
-        RefreshInspectionList();
         
-        // Store initial values
-        StorePreviousValues();
-        
-        // Force layout update to apply fixed values
-        StartCoroutine(ForceLayoutUpdateNextFrame());
-    }
-    
-    // Coroutine to force layout update on the next frame
-    private System.Collections.IEnumerator ForceLayoutUpdateNextFrame()
-    {
-        yield return null; // Wait one frame
-        UpdateLayout();
-        Debug.Log("Initial layout update applied");
-    }
-    
-    void Update()
-    {
-        // Check for layout changes during runtime
-        if (updateLayoutInRealTime && HasLayoutChanged())
-        {
-            UpdateLayout();
-            StorePreviousValues();
-        }
-        
-        // Update item visibility based on bounds clipping
-        if (enableBoundsClipping && listPanel != null && listPanel.activeSelf)
-        {
-            UpdateListItemVisibility();
-        }
-    }
-    
-    bool HasLayoutChanged()
-    {
-        float threshold = 0.001f;
-        return Mathf.Abs(itemSpacing - previousSpacing) > threshold ||
-               Mathf.Abs(listPadding - previousPadding) > threshold ||
-               Mathf.Abs(itemHeight - previousHeight) > threshold;
-    }
-    
-    void StorePreviousValues()
-    {
-        previousSpacing = itemSpacing;
-        previousPadding = listPadding;
-        previousHeight = itemHeight;
-    }
-    
-    void UpdateLayout()
-    {
-        // Update the layout group settings
-        if (layoutGroup != null)
-        {
-            layoutGroup.spacing = itemSpacing;
-            // Convert XR units to pixels for padding
-            int paddingPixels = Mathf.RoundToInt(listPadding * 1000f);
-            layoutGroup.padding = new UnityEngine.RectOffset(paddingPixels, paddingPixels, paddingPixels, paddingPixels);
-        }
-        
-        // Update all existing list items
-        foreach (GameObject item in listItems)
-        {
-            if (item != null)
-            {
-                UpdateListItemSize(item);
-            }
-        }
-        
-        // Force the layout to rebuild immediately
-        if (layoutGroup != null)
-        {
-            UnityEngine.UI.LayoutRebuilder.ForceRebuildLayoutImmediate(layoutGroup.GetComponent<RectTransform>());
-        }
-        
-        if (Application.isPlaying)
-            Debug.Log($"XR Layout updated - Spacing: {itemSpacing:F4}, Padding: {listPadding:F4}, Height: {itemHeight:F4}");
-    }
-    
-    void SetupListLayout()
-    {
-        if (listContainer != null)
-        {
-            // Add VerticalLayoutGroup if it doesn't exist
-            layoutGroup = listContainer.GetComponent<UnityEngine.UI.VerticalLayoutGroup>();
-            if (layoutGroup == null)
-            {
-                layoutGroup = listContainer.gameObject.AddComponent<UnityEngine.UI.VerticalLayoutGroup>();
-            }
-            
-            // Configure the layout with current settings (XR scale)
-            layoutGroup.childControlHeight = false;
-            layoutGroup.childControlWidth = true;
-            layoutGroup.childForceExpandHeight = false;
-            layoutGroup.childForceExpandWidth = true;
-            layoutGroup.spacing = itemSpacing;
-            
-            // Convert to pixels for padding (assuming 1000 pixels per unit)
-            int paddingPixels = Mathf.RoundToInt(listPadding * 1000f);
-            layoutGroup.padding = new UnityEngine.RectOffset(paddingPixels, paddingPixels, paddingPixels, paddingPixels);
-            
-            // Add ContentSizeFitter if it doesn't exist
-            sizeFitter = listContainer.GetComponent<UnityEngine.UI.ContentSizeFitter>();
-            if (sizeFitter == null)
-            {
-                sizeFitter = listContainer.gameObject.AddComponent<UnityEngine.UI.ContentSizeFitter>();
-            }
-            
-            sizeFitter.verticalFit = UnityEngine.UI.ContentSizeFitter.FitMode.PreferredSize;
-            sizeFitter.horizontalFit = UnityEngine.UI.ContentSizeFitter.FitMode.Unconstrained;
-            
-            Debug.Log($"XR List layout configured - Spacing: {itemSpacing}, Padding: {listPadding}, Item Height: {itemHeight}");
-        }
+        // Load initial data
+        RefreshInspections();
     }
     
     void SetupButtons()
     {
         // Setup toggle button
-        if (toggleListButton != null)
+        if (togglePanelButton != null)
         {
-            var toggleButton = toggleListButton.GetComponent<PressableButton>();
+            var toggleButton = togglePanelButton.GetComponent<PressableButton>();
             if (toggleButton == null)
-                toggleButton = toggleListButton.GetComponentInChildren<PressableButton>();
+                toggleButton = togglePanelButton.GetComponentInChildren<PressableButton>();
             
             if (toggleButton != null)
             {
-                toggleButton.OnClicked.AddListener(ToggleInspectionList);
-                Debug.Log("Toggle list button connected");
+                toggleButton.OnClicked.AddListener(TogglePanel);
+                Debug.Log("Toggle panel button connected");
             }
         }
         
-        // Setup refresh button
-        if (refreshListButton != null)
+        // Setup inspection buttons
+        SetupInspectionButton(button1, 0);
+        SetupInspectionButton(button2, 1);
+        SetupInspectionButton(button3, 2);
+    }
+    
+    void SetupInspectionButton(GameObject buttonObj, int index)
+    {
+        if (buttonObj == null) return;
+        
+        var button = buttonObj.GetComponent<PressableButton>();
+        if (button == null)
+            button = buttonObj.GetComponentInChildren<PressableButton>();
+        
+        if (button != null)
         {
-            var refreshButton = refreshListButton.GetComponent<PressableButton>();
-            if (refreshButton == null)
-                refreshButton = refreshListButton.GetComponentInChildren<PressableButton>();
-            
-            if (refreshButton != null)
-            {
-                refreshButton.OnClicked.AddListener(RefreshInspectionList);
-                Debug.Log("Refresh list button connected");
-            }
+            button.OnClicked.AddListener(() => LoadInspection(index));
+            Debug.Log($"Inspection button {index + 1} connected");
         }
     }
     
-    public void ToggleInspectionList()
+    public void TogglePanel()
     {
-        isListVisible = !isListVisible;
+        isPanelVisible = !isPanelVisible;
         
-        if (listPanel != null)
+        if (inspectionPanel != null)
         {
-            listPanel.SetActive(isListVisible);
+            inspectionPanel.SetActive(isPanelVisible);
             
-            if (isListVisible)
+            if (isPanelVisible)
             {
-                RefreshInspectionList();
-                // Force layout update when showing the list
-                StartCoroutine(ForceLayoutUpdateNextFrame());
-                Debug.Log("Inspection list opened");
+                if (autoRefreshOnOpen)
+                    RefreshInspections();
+                Debug.Log("Inspection panel opened");
             }
             else
             {
-                Debug.Log("Inspection list closed");
+                Debug.Log("Inspection panel closed");
             }
         }
     }
     
-    public void RefreshInspectionList()
+    public void RefreshInspections()
     {
-        Debug.Log("Refreshing inspection list...");
-        
-        // Clear existing list items
-        ClearListItems();
+        Debug.Log("Refreshing last three inspections...");
         
         // Get all inspection files
-        var inspectionFiles = GetInspectionFiles();
+        lastThreeInspections = GetLastThreeInspections();
         
-        if (inspectionFiles.Length == 0)
-        {
-            CreateNoInspectionsItem();
-            return;
-        }
+        // Update button displays
+        UpdateButtonDisplays();
         
-        // Create list items for each inspection
-        int itemCount = 0;
-        foreach (var fileInfo in inspectionFiles)
-        {
-            if (itemCount >= maxInspectionsToShow)
-                break;
-                
-            CreateInspectionListItem(fileInfo);
-            itemCount++;
-        }
-        
-        Debug.Log($"Created {itemCount} inspection list items");
-        
-        // Force layout update after creating items and update clipping
-        StartCoroutine(ForceLayoutUpdateNextFrame());
-        if (enableBoundsClipping)
-        {
-            UpdateListItemVisibility();
-        }
+        Debug.Log($"Loaded {lastThreeInspections.Length} recent inspections");
     }
     
-    InspectionFileInfo[] GetInspectionFiles()
+    InspectionFileInfo[] GetLastThreeInspections()
     {
         try
         {
@@ -354,11 +177,11 @@ public class InspectionListUI : MonoBehaviour
                 }
             }
             
-            // Sort by creation time
+            // Sort by creation time and take the last 3
             if (newestFirst)
-                return fileInfos.OrderByDescending(f => f.creationTime).ToArray();
+                return fileInfos.OrderByDescending(f => f.creationTime).Take(3).ToArray();
             else
-                return fileInfos.OrderBy(f => f.creationTime).ToArray();
+                return fileInfos.OrderBy(f => f.creationTime).TakeLast(3).ToArray();
         }
         catch (Exception e)
         {
@@ -367,65 +190,46 @@ public class InspectionListUI : MonoBehaviour
         }
     }
     
-    void CreateInspectionListItem(InspectionFileInfo fileInfo)
+    void UpdateButtonDisplays()
     {
-        if (listItemPrefab == null || listContainer == null)
-        {
-            Debug.LogError("List item prefab or container not assigned!");
-            return;
-        }
+        UpdateButtonDisplay(button1, 0);
+        UpdateButtonDisplay(button2, 1);
+        UpdateButtonDisplay(button3, 2);
+    }
+    
+    void UpdateButtonDisplay(GameObject buttonObj, int index)
+    {
+        if (buttonObj == null) return;
         
-        // Create the list item
-        GameObject listItem = Instantiate(listItemPrefab, listContainer);
+        // Find text component in the button
+        TextMeshProUGUI[] textComponents = buttonObj.GetComponentsInChildren<TextMeshProUGUI>();
         
-        // Setup the size for this item
-        UpdateListItemSize(listItem);
-        
-        // Find and setup the text component
-        TextMeshProUGUI[] textComponents = listItem.GetComponentsInChildren<TextMeshProUGUI>();
         if (textComponents.Length > 0)
         {
-            string displayText = CreateDisplayText(fileInfo);
-            textComponents[0].text = displayText;
+            if (index < lastThreeInspections.Length)
+            {
+                // Display inspection info
+                var fileInfo = lastThreeInspections[index];
+                string displayText = CreateDisplayText(fileInfo, index + 1);
+                textComponents[0].text = displayText;
+                
+                // Enable the button
+                var button = buttonObj.GetComponent<PressableButton>();
+                if (button != null) button.enabled = true;
+            }
+            else
+            {
+                // No inspection available
+                textComponents[0].text = $"Button {index + 1}\nNo inspection";
+                
+                // Disable the button
+                var button = buttonObj.GetComponent<PressableButton>();
+                if (button != null) button.enabled = false;
+            }
         }
-        
-        // Setup the button to load this inspection
-        PressableButton button = listItem.GetComponent<PressableButton>();
-        if (button == null)
-            button = listItem.GetComponentInChildren<PressableButton>();
-        
-        if (button != null)
-        {
-            button.OnClicked.AddListener(() => LoadSelectedInspection(fileInfo));
-        }
-        
-        listItems.Add(listItem);
-        
-        Debug.Log($"Created list item for {fileInfo.fileName} with height {itemHeight}");
     }
     
-    void UpdateListItemSize(GameObject listItem)
-    {
-        // Ensure the list item has proper size
-        RectTransform rectTransform = listItem.GetComponent<RectTransform>();
-        if (rectTransform != null)
-        {
-            // Set the size based on current settings
-            rectTransform.sizeDelta = new Vector2(rectTransform.sizeDelta.x, itemHeight);
-        }
-        
-        // Add/Update LayoutElement for better control
-        var layoutElement = listItem.GetComponent<UnityEngine.UI.LayoutElement>();
-        if (layoutElement == null)
-        {
-            layoutElement = listItem.AddComponent<UnityEngine.UI.LayoutElement>();
-        }
-        
-        layoutElement.preferredHeight = itemHeight;
-        layoutElement.flexibleHeight = 0f;
-    }
-    
-    string CreateDisplayText(InspectionFileInfo fileInfo)
+    string CreateDisplayText(InspectionFileInfo fileInfo, int buttonNumber)
     {
         // Create a nice display format
         string timeStr = "";
@@ -449,48 +253,33 @@ public class InspectionListUI : MonoBehaviour
         string elementStr = string.IsNullOrEmpty(fileInfo.connectedElement) ? "No element" : fileInfo.connectedElement;
         
         // Truncate long element names
-        if (elementStr.Length > 20)
-            elementStr = elementStr.Substring(0, 17) + "...";
+        if (elementStr.Length > 15)
+            elementStr = elementStr.Substring(0, 12) + "...";
         
-        return $"{timeStr}\n{elementStr}\n{fileInfo.contentSummary}";
+        return $"#{buttonNumber}\n{timeStr}\n{elementStr}";
     }
     
-    void CreateNoInspectionsItem()
+    void LoadInspection(int index)
     {
-        if (listItemPrefab == null || listContainer == null)
-            return;
-        
-        GameObject listItem = Instantiate(listItemPrefab, listContainer);
-        
-        // Find and setup the text component
-        TextMeshProUGUI[] textComponents = listItem.GetComponentsInChildren<TextMeshProUGUI>();
-        if (textComponents.Length > 0)
+        if (index >= lastThreeInspections.Length)
         {
-            textComponents[0].text = "No inspections found\nSave an inspection to see it here";
+            Debug.LogWarning($"No inspection available for button {index + 1}");
+            return;
         }
         
-        // Disable the button
-        PressableButton button = listItem.GetComponent<PressableButton>();
-        if (button != null)
-            button.enabled = false;
-        
-        listItems.Add(listItem);
-    }
-    
-    void LoadSelectedInspection(InspectionFileInfo fileInfo)
-    {
-        Debug.Log($"Loading inspection: {fileInfo.fileName}");
+        var fileInfo = lastThreeInspections[index];
+        Debug.Log($"Loading inspection {index + 1}: {fileInfo.fileName}");
         
         if (textReader != null)
         {
             // Set the file to load and trigger the load
             textReader.LoadSpecificFile(fileInfo.fileName);
             
-            // Close the list after loading
-            if (listPanel != null)
+            // Close the panel after loading
+            if (inspectionPanel != null)
             {
-                listPanel.SetActive(false);
-                isListVisible = false;
+                inspectionPanel.SetActive(false);
+                isPanelVisible = false;
             }
             
             Debug.Log($"Loaded inspection from {fileInfo.timestamp} connected to {fileInfo.connectedElement}");
@@ -501,250 +290,48 @@ public class InspectionListUI : MonoBehaviour
         }
     }
     
-    void ClearListItems()
+    /// <summary>
+    /// Public method to refresh inspections - can be called from other scripts
+    /// </summary>
+    public void UpdateInspections()
     {
-        foreach (GameObject item in listItems)
-        {
-            if (item != null)
-                Destroy(item);
-        }
-        listItems.Clear();
+        RefreshInspections();
     }
     
     /// <summary>
-    /// Force update layout manually - useful for buttons or other scripts
+    /// Public method to show the panel
     /// </summary>
-    public void ForceUpdateLayout()
+    public void ShowPanel()
     {
-        UpdateLayout();
-        Debug.Log("Layout force updated manually");
+        if (!isPanelVisible)
+            TogglePanel();
     }
     
     /// <summary>
-    /// Set spacing value programmatically (XR scale)
+    /// Public method to hide the panel
     /// </summary>
-    public void SetSpacing(float spacing)
+    public void HidePanel()
     {
-        itemSpacing = Mathf.Clamp(spacing, 0f, 0.02f);
-        UpdateLayout();
+        if (isPanelVisible)
+            TogglePanel();
     }
     
     /// <summary>
-    /// Set padding value programmatically (XR scale)
+    /// Get info about a specific inspection (0-2)
     /// </summary>
-    public void SetPadding(float padding)
+    public InspectionFileInfo GetInspectionInfo(int index)
     {
-        listPadding = Mathf.Clamp(padding, 0f, 0.015f);
-        UpdateLayout();
+        if (index >= 0 && index < lastThreeInspections.Length)
+            return lastThreeInspections[index];
+        return null;
     }
     
     /// <summary>
-    /// Set item height programmatically (XR scale)
+    /// Check if an inspection is available at the given index
     /// </summary>
-    public void SetItemHeight(float height)
+    public bool HasInspectionAt(int index)
     {
-        itemHeight = Mathf.Clamp(height, 0.01f, 0.1f);
-        UpdateLayout();
-    }
-    
-    /// <summary>
-    /// Reset layout to XR-optimized defaults
-    /// </summary>
-    public void ResetLayoutToDefaults()
-    {
-        itemSpacing = 0f;
-        listPadding = 0f;
-        itemHeight = 0.015f;
-        UpdateLayout();
-        Debug.Log("Layout reset to XR defaults");
-    }
-    
-    /// <summary>
-    /// Public method to refresh list - can be called from other scripts
-    /// </summary>
-    public void UpdateList()
-    {
-        RefreshInspectionList();
-    }
-    
-    /// <summary>
-    /// Public method to hide the list
-    /// </summary>
-    public void HideList()
-    {
-        if (isListVisible)
-            ToggleInspectionList();
-    }
-    
-    void OnDestroy()
-    {
-        ClearListItems();
-    }
-    
-    // Bounds clipping methods (adapted from TileMenuManager)
-    void UpdateListItemVisibility()
-    {
-        if (!enableBoundsClipping) return;
-        
-        Bounds clipBounds = GetClippingBounds();
-        
-        foreach (GameObject item in listItems)
-        {
-            if (item != null)
-            {
-                bool shouldBeVisible = IsItemInBounds(item, clipBounds);
-                
-                // Only change visibility if it's different to avoid unnecessary calls
-                if (item.activeSelf != shouldBeVisible)
-                {
-                    item.SetActive(shouldBeVisible);
-                }
-            }
-        }
-    }
-    
-    Bounds GetClippingBounds()
-    {
-        switch (clippingMode)
-        {
-            case ClippingMode.UseListPanel:
-                return GetBoundsFromRectTransform(listPanel);
-                
-            case ClippingMode.UseListContainer:
-                return GetBoundsFromRectTransform(listContainer.gameObject);
-                
-            case ClippingMode.UseScrollViewport:
-                return GetScrollViewportBounds();
-                
-            case ClippingMode.Manual:
-            default:
-                return GetManualBounds();
-        }
-    }
-    
-    Bounds GetBoundsFromRectTransform(GameObject target)
-    {
-        if (target == null) return GetManualBounds();
-        
-        RectTransform rectTransform = target.GetComponent<RectTransform>();
-        if (rectTransform == null) return GetManualBounds();
-        
-        // Get world corners of the RectTransform
-        Vector3[] worldCorners = new Vector3[4];
-        rectTransform.GetWorldCorners(worldCorners);
-        
-        // Calculate center and size from corners
-        Vector3 min = worldCorners[0]; // Bottom-left
-        Vector3 max = worldCorners[2]; // Top-right
-        
-        Vector3 center = (min + max) * 0.5f + clippingCenter;
-        Vector3 size = max - min;
-        
-        return new Bounds(center, size);
-    }
-    
-    Bounds GetScrollViewportBounds()
-    {
-        // Look for a ScrollRect in parents
-        ScrollRect scrollRect = listContainer.GetComponentInParent<ScrollRect>();
-        if (scrollRect != null && scrollRect.viewport != null)
-        {
-            return GetBoundsFromRectTransform(scrollRect.viewport.gameObject);
-        }
-        
-        // Fallback to list panel
-        return GetBoundsFromRectTransform(listPanel);
-    }
-    
-    Bounds GetManualBounds()
-    {
-        Vector3 center;
-        Vector3 size;
-        
-        if (clippingBounds != null)
-        {
-            // Use the referenced transform's bounds
-            center = clippingBounds.position + clippingCenter;
-            
-            // Try to get bounds from a collider first
-            Collider boundsCollider = clippingBounds.GetComponent<Collider>();
-            if (boundsCollider != null)
-            {
-                size = boundsCollider.bounds.size;
-            }
-            else
-            {
-                // Use the transform's scale or lossyScale as size
-                size = Vector3.Scale(clippingSize, clippingBounds.lossyScale);
-            }
-        }
-        else
-        {
-            // Use manual settings relative to list container
-            center = listContainer.position + clippingCenter;
-            size = clippingSize;
-        }
-        
-        return new Bounds(center, size);
-    }
-    
-    bool IsItemInBounds(GameObject item, Bounds bounds)
-    {
-        // Get the item's world position
-        Vector3 itemPosition = item.transform.position;
-        
-        // For more precise checking, you can use bounds intersection:
-        Bounds itemBounds = GetItemBounds(item);
-        return bounds.Intersects(itemBounds);
-        
-        // Simple point-in-bounds check (alternative)
-        // return bounds.Contains(itemPosition);
-    }
-    
-    // Get bounds for a list item
-    Bounds GetItemBounds(GameObject item)
-    {
-        Bounds itemBounds = new Bounds(item.transform.position, Vector3.zero);
-        
-        // Get all renderers to calculate total bounds
-        Renderer[] renderers = item.GetComponentsInChildren<Renderer>();
-        foreach (Renderer renderer in renderers)
-        {
-            itemBounds.Encapsulate(renderer.bounds);
-        }
-        
-        // If no renderers found, use the item height as default size
-        if (renderers.Length == 0)
-        {
-            // For UI elements, use the item height and estimate width
-            itemBounds.size = new Vector3(0.3f, itemHeight, 0.01f);
-        }
-        
-        return itemBounds;
-    }
-    
-    // Public method to manually update visibility (useful for scrolling)
-    public void UpdateClipping()
-    {
-        if (enableBoundsClipping)
-        {
-            UpdateListItemVisibility();
-        }
-    }
-    
-    // Debug method to visualize clipping bounds in Scene view
-    void OnDrawGizmosSelected()
-    {
-        if (enableBoundsClipping && Application.isPlaying)
-        {
-            Bounds clipBounds = GetClippingBounds();
-            
-            Gizmos.color = Color.yellow;
-            Gizmos.DrawWireCube(clipBounds.center, clipBounds.size);
-            
-            Gizmos.color = new Color(1f, 1f, 0f, 0.1f);
-            Gizmos.DrawCube(clipBounds.center, clipBounds.size);
-        }
+        return index >= 0 && index < lastThreeInspections.Length;
     }
 }
 
