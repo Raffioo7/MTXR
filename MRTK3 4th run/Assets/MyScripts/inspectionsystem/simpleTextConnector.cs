@@ -31,12 +31,20 @@ public class SimpleTextReader : MonoBehaviour
     [Tooltip("Drag your load button here")]
     public GameObject loadButtonObject;
     
+    [Header("Element Highlighting")]
+    [Tooltip("Drag your PropertyClickHandler_MRTK3 component here")]
+    public PropertyClickHandler_MRTK3 propertyHandler;
+    
     [Header("Load Settings")]
     [Tooltip("Filename to load (without .json extension). Leave empty to load most recent file.")]
     public string fileToLoad = "";
     
     void Start()
     {
+        // Find PropertyClickHandler if not assigned
+        if (propertyHandler == null)
+            propertyHandler = FindObjectOfType<PropertyClickHandler_MRTK3>();
+        
         SetupButtons();
         LogAssignedFields();
     }
@@ -100,7 +108,88 @@ public class SimpleTextReader : MonoBehaviour
         if (inputField1 != null)
             Debug.Log($"Input Field 1 ('{inputField1.gameObject.name}'): '{input1}'");
         
-        SaveToJSON(text1, text2, input1);
+        // Get highlighted element info
+        ElementInfo elementInfo = GetHighlightedElementInfo();
+        
+        SaveToJSON(text1, text2, input1, elementInfo);
+    }
+    
+    ElementInfo GetHighlightedElementInfo()
+    {
+        var elementInfo = new ElementInfo();
+        
+        if (propertyHandler != null)
+        {
+            // Use reflection to get the private currentlySelected field
+            var field = typeof(PropertyClickHandler_MRTK3).GetField("currentlySelected", 
+                System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+            
+            if (field != null)
+            {
+                GameObject highlightedElement = field.GetValue(propertyHandler) as GameObject;
+                
+                if (highlightedElement != null)
+                {
+                    elementInfo.elementName = highlightedElement.name;
+                    
+                    // Get RevitData if available
+                    RevitData revitData = highlightedElement.GetComponent<RevitData>();
+                    if (revitData != null)
+                    {
+                        elementInfo.elementID = GetRevitDataID(revitData);
+                        elementInfo.elementProperties = GetRevitDataSummary(revitData, highlightedElement);
+                    }
+                    
+                    Debug.Log($"Connected to highlighted element: {elementInfo.elementName}");
+                }
+                else
+                {
+                    Debug.Log("No element currently highlighted");
+                }
+            }
+        }
+        
+        return elementInfo;
+    }
+    
+    string GetRevitDataID(RevitData revitData)
+    {
+        // Try to get ID from RevitData - you might need to adjust this based on your RevitData structure
+        try
+        {
+            var properties = revitData.GetDisplayProperties(revitData.gameObject);
+            var idProperty = properties.FirstOrDefault(p => 
+                p.key.ToLower().Contains("id") || 
+                p.key.ToLower().Contains("elementid") ||
+                p.key.ToLower().Contains("guid"));
+            
+            return idProperty?.value ?? revitData.gameObject.GetInstanceID().ToString();
+        }
+        catch
+        {
+            return revitData.gameObject.GetInstanceID().ToString();
+        }
+    }
+    
+    string GetRevitDataSummary(RevitData revitData, GameObject element)
+    {
+        try
+        {
+            var properties = revitData.GetDisplayProperties(element);
+            var summary = "";
+            
+            // Get first few key properties
+            foreach (var prop in properties.Take(5))
+            {
+                summary += $"{prop.key}: {prop.value}; ";
+            }
+            
+            return summary.TrimEnd(' ', ';');
+        }
+        catch
+        {
+            return $"Element: {element.name}";
+        }
     }
     
     public void LoadFromJSON()
@@ -195,7 +284,7 @@ public class SimpleTextReader : MonoBehaviour
         }
     }
     
-    void SaveToJSON(string textField1Content, string textField2Content, string inputField1Content)
+    void SaveToJSON(string textField1Content, string textField2Content, string inputField1Content, ElementInfo elementInfo)
     {
         var inspectionData = new MultiFieldInspectionData
         {
@@ -204,7 +293,10 @@ public class SimpleTextReader : MonoBehaviour
             textField1 = textField1Content,
             textField2 = textField2Content,
             inputField1 = inputField1Content,
-            captureInfo = $"Captured {DateTime.Now:HH:mm:ss} - Fields: {(string.IsNullOrEmpty(textField1Content) ? 0 : 1) + (string.IsNullOrEmpty(textField2Content) ? 0 : 1) + (string.IsNullOrEmpty(inputField1Content) ? 0 : 1)} with data"
+            connectedElementName = elementInfo.elementName,
+            connectedElementID = elementInfo.elementID,
+            elementProperties = elementInfo.elementProperties,
+            captureInfo = $"Captured {DateTime.Now:HH:mm:ss} - Fields: {(string.IsNullOrEmpty(textField1Content) ? 0 : 1) + (string.IsNullOrEmpty(textField2Content) ? 0 : 1) + (string.IsNullOrEmpty(inputField1Content) ? 0 : 1)} with data, Element: {elementInfo.elementName}"
         };
         
         try
@@ -220,6 +312,7 @@ public class SimpleTextReader : MonoBehaviour
             Debug.Log($"Text Field 1: '{textField1Content}'");
             Debug.Log($"Text Field 2: '{textField2Content}'");
             Debug.Log($"Input Field 1: '{inputField1Content}'");
+            Debug.Log($"Connected Element: '{elementInfo.elementName}' (ID: {elementInfo.elementID})");
         }
         catch (Exception e)
         {
@@ -265,6 +358,25 @@ public class SimpleTextReader : MonoBehaviour
     {
         LoadFromJSON();
     }
+    
+    /// <summary>
+    /// Find and highlight the element that was connected to a loaded inspection
+    /// </summary>
+    public void HighlightConnectedElement()
+    {
+        // This would be called after loading to highlight the saved element
+        // Implementation depends on how you want to find the element again
+    }
+}
+
+/// <summary>
+/// Helper class for element information
+/// </summary>
+public class ElementInfo
+{
+    public string elementName = "";
+    public string elementID = "";
+    public string elementProperties = "";
 }
 
 [System.Serializable]
@@ -276,4 +388,9 @@ public class MultiFieldInspectionData
     public string textField1;
     public string textField2;
     public string inputField1;
+    
+    [Header("Element Connection")]
+    public string connectedElementName;    // Name of the highlighted GameObject
+    public string connectedElementID;      // RevitData ID if available
+    public string elementProperties;       // Store key properties as text
 }
