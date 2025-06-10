@@ -6,7 +6,7 @@ using System.IO;
 using System.Linq;
 
 /// <summary>
-/// Reads text from multiple TMP fields and MRTK3 input field, saves to JSON, and can load back from JSON
+/// Reads text from multiple TMP fields and MRTK3 input field, saves to JSON with auto-incrementing numbers
 /// </summary>
 public class SimpleTextReader : MonoBehaviour
 {
@@ -24,6 +24,16 @@ public class SimpleTextReader : MonoBehaviour
     [Header("Settings")]
     public string fileName = "bridge_inspection";
     
+    [Header("Numbering System")]
+    [Tooltip("Starting number for inspections (will auto-increment)")]
+    public int startingNumber = 1;
+    
+    [Tooltip("Number format (e.g., '000' for 001, 002, 003)")]
+    public string numberFormat = "000";
+    
+    [Tooltip("Reset numbering system")]
+    public bool resetNumbering = false;
+    
     [Header("Buttons")]
     [Tooltip("Drag your save button here")]
     public GameObject saveButtonObject;
@@ -39,14 +49,144 @@ public class SimpleTextReader : MonoBehaviour
     [Tooltip("Filename to load (without .json extension). Leave empty to load most recent file.")]
     public string fileToLoad = "";
     
+    // Private variables for numbering
+    private int currentInspectionNumber;
+    private string numberingDataFile = "inspection_numbering.json";
+    
     void Start()
     {
         // Find PropertyClickHandler if not assigned
         if (propertyHandler == null)
             propertyHandler = FindObjectOfType<PropertyClickHandler_MRTK3>();
         
+        // Initialize numbering system
+        InitializeNumberingSystem();
+        
         SetupButtons();
         LogAssignedFields();
+    }
+    
+    void OnValidate()
+    {
+        // Reset numbering when checkbox is checked in inspector
+        if (resetNumbering)
+        {
+            resetNumbering = false;
+            if (Application.isPlaying)
+            {
+                ResetNumberingSystem();
+            }
+        }
+    }
+    
+    void InitializeNumberingSystem()
+    {
+        try
+        {
+            string numberingPath = Path.Combine(Application.persistentDataPath, numberingDataFile);
+            
+            if (File.Exists(numberingPath))
+            {
+                string numberingJson = File.ReadAllText(numberingPath);
+                NumberingData data = JsonUtility.FromJson<NumberingData>(numberingJson);
+                currentInspectionNumber = data.nextNumber;
+                Debug.Log($"Loaded numbering system - Next inspection number: {currentInspectionNumber.ToString(numberFormat)}");
+            }
+            else
+            {
+                // First time setup - scan existing files to determine next number
+                currentInspectionNumber = GetNextNumberFromExistingFiles();
+                SaveNumberingData();
+                Debug.Log($"Initialized numbering system - Next inspection number: {currentInspectionNumber.ToString(numberFormat)}");
+            }
+        }
+        catch (Exception e)
+        {
+            Debug.LogError($"Error initializing numbering system: {e.Message}");
+            currentInspectionNumber = startingNumber;
+        }
+    }
+    
+    int GetNextNumberFromExistingFiles()
+    {
+        try
+        {
+            string basePath = Application.persistentDataPath;
+            string[] files = Directory.GetFiles(basePath, $"{fileName}_*.json");
+            
+            int highestNumber = startingNumber - 1;
+            
+            foreach (string file in files)
+            {
+                try
+                {
+                    string jsonContent = File.ReadAllText(file);
+                    MultiFieldInspectionData data = JsonUtility.FromJson<MultiFieldInspectionData>(jsonContent);
+                    
+                    if (data != null && !string.IsNullOrEmpty(data.inspectionNumber))
+                    {
+                        if (int.TryParse(data.inspectionNumber, out int fileNumber))
+                        {
+                            if (fileNumber > highestNumber)
+                            {
+                                highestNumber = fileNumber;
+                            }
+                        }
+                    }
+                }
+                catch
+                {
+                    // Skip files that can't be parsed
+                    continue;
+                }
+            }
+            
+            int nextNumber = highestNumber + 1;
+            Debug.Log($"Scanned {files.Length} existing files, highest number found: {highestNumber}, next will be: {nextNumber}");
+            return nextNumber;
+        }
+        catch (Exception e)
+        {
+            Debug.LogError($"Error scanning existing files: {e.Message}");
+            return startingNumber;
+        }
+    }
+    
+    void SaveNumberingData()
+    {
+        try
+        {
+            NumberingData data = new NumberingData
+            {
+                nextNumber = currentInspectionNumber,
+                lastUpdated = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss")
+            };
+            
+            string json = JsonUtility.ToJson(data, true);
+            string numberingPath = Path.Combine(Application.persistentDataPath, numberingDataFile);
+            File.WriteAllText(numberingPath, json);
+        }
+        catch (Exception e)
+        {
+            Debug.LogError($"Error saving numbering data: {e.Message}");
+        }
+    }
+    
+    public void ResetNumberingSystem()
+    {
+        currentInspectionNumber = startingNumber;
+        SaveNumberingData();
+        Debug.Log($"Numbering system reset to {startingNumber}");
+    }
+    
+    public int GetNextInspectionNumber()
+    {
+        return currentInspectionNumber;
+    }
+    
+    public string GetNextInspectionNumberFormatted()
+    {
+        return currentInspectionNumber.ToString(numberFormat);
     }
     
     void SetupButtons()
@@ -90,7 +230,7 @@ public class SimpleTextReader : MonoBehaviour
         if (inputField1 != null)
             Debug.Log($"Input Field 1: '{inputField1.gameObject.name}' - Current: '{inputField1.text}'");
         
-        Debug.Log("Text reader ready. Save button captures all text. Load button restores from JSON.");
+        Debug.Log($"Text reader ready. Next inspection number: {GetNextInspectionNumberFormatted()}");
     }
     
     public void SaveAllTextToJSON()
@@ -220,6 +360,7 @@ public class SimpleTextReader : MonoBehaviour
             PopulateFieldsFromData(loadedData);
             
             Debug.Log($"SUCCESS! Loaded inspection data from {Path.GetFileName(filePath)}");
+            Debug.Log($"Inspection Number: {loadedData.inspectionNumber}");
             Debug.Log($"Inspection ID: {loadedData.inspectionId}");
             Debug.Log($"Timestamp: {loadedData.timestamp}");
         }
@@ -286,8 +427,12 @@ public class SimpleTextReader : MonoBehaviour
     
     void SaveToJSON(string textField1Content, string textField2Content, string inputField1Content, ElementInfo elementInfo)
     {
+        // Get the current inspection number and increment for next time
+        string inspectionNumber = currentInspectionNumber.ToString(numberFormat);
+        
         var inspectionData = new MultiFieldInspectionData
         {
+            inspectionNumber = inspectionNumber,
             inspectionId = Guid.NewGuid().ToString(),
             timestamp = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss"),
             textField1 = textField1Content,
@@ -296,23 +441,28 @@ public class SimpleTextReader : MonoBehaviour
             connectedElementName = elementInfo.elementName,
             connectedElementID = elementInfo.elementID,
             elementProperties = elementInfo.elementProperties,
-            captureInfo = $"Captured {DateTime.Now:HH:mm:ss} - Fields: {(string.IsNullOrEmpty(textField1Content) ? 0 : 1) + (string.IsNullOrEmpty(textField2Content) ? 0 : 1) + (string.IsNullOrEmpty(inputField1Content) ? 0 : 1)} with data, Element: {elementInfo.elementName}"
+            captureInfo = $"Inspection #{inspectionNumber} - Captured {DateTime.Now:HH:mm:ss} - Fields: {(string.IsNullOrEmpty(textField1Content) ? 0 : 1) + (string.IsNullOrEmpty(textField2Content) ? 0 : 1) + (string.IsNullOrEmpty(inputField1Content) ? 0 : 1)} with data, Element: {elementInfo.elementName}"
         };
         
         try
         {
             string json = JsonUtility.ToJson(inspectionData, true);
             string timestamp = DateTime.Now.ToString("yyyyMMdd_HHmmss");
-            string fullFileName = $"{fileName}_{timestamp}.json";
+            string fullFileName = $"{fileName}_{inspectionNumber}_{timestamp}.json";
             string filePath = Path.Combine(Application.persistentDataPath, fullFileName);
             
             File.WriteAllText(filePath, json);
             
-            Debug.Log($"SUCCESS! Saved all fields to: {filePath}");
+            // Increment the number for next inspection
+            currentInspectionNumber++;
+            SaveNumberingData();
+            
+            Debug.Log($"SUCCESS! Saved inspection #{inspectionNumber} to: {filePath}");
             Debug.Log($"Text Field 1: '{textField1Content}'");
             Debug.Log($"Text Field 2: '{textField2Content}'");
             Debug.Log($"Input Field 1: '{inputField1Content}'");
             Debug.Log($"Connected Element: '{elementInfo.elementName}' (ID: {elementInfo.elementID})");
+            Debug.Log($"Next inspection will be: {currentInspectionNumber.ToString(numberFormat)}");
         }
         catch (Exception e)
         {
@@ -379,12 +529,26 @@ public class ElementInfo
     public string elementProperties = "";
 }
 
+/// <summary>
+/// Data structure for tracking inspection numbering
+/// </summary>
+[System.Serializable]
+public class NumberingData
+{
+    public int nextNumber;
+    public string lastUpdated;
+}
+
 [System.Serializable]
 public class MultiFieldInspectionData
 {
-    public string inspectionId;
+    [Header("Inspection Info")]
+    public string inspectionNumber;        // NEW: Auto-incrementing number (001, 002, etc.)
+    public string inspectionId;            // Unique GUID
     public string timestamp;
     public string captureInfo;
+    
+    [Header("Field Data")]
     public string textField1;
     public string textField2;
     public string inputField1;

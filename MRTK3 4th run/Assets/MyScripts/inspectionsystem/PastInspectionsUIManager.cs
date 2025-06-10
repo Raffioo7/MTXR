@@ -39,6 +39,22 @@ public class SimpleInspectionLoader : MonoBehaviour
     [Tooltip("Show newest first")]
     public bool newestFirst = true;
     
+    [Header("Display Settings")]
+    [Tooltip("Date format for button display")]
+    public DateFormat dateFormat = DateFormat.MonthDayYear;
+    
+    [Tooltip("Show inspection ID if available, otherwise use filename number")]
+    public bool preferInspectionId = true;
+    
+    public enum DateFormat
+    {
+        MonthDayYear,     // Dec 15, 2024
+        DayMonthYear,     // 15 Dec 2024  
+        ShortDate,        // 12/15/24
+        YearMonthDay,     // 2024-12-15
+        MonthDay          // Dec 15
+    }
+    
     private InspectionFileInfo[] lastThreeInspections;
     private bool isPanelVisible = false;
     
@@ -201,62 +217,226 @@ public class SimpleInspectionLoader : MonoBehaviour
     {
         if (buttonObj == null) return;
         
-        // Find text component in the button
-        TextMeshProUGUI[] textComponents = buttonObj.GetComponentsInChildren<TextMeshProUGUI>();
+        // Find TextMeshPro component - try both UI and 3D versions
+        TextMeshProUGUI textComponentUI = null;
+        TMPro.TextMeshPro textComponent3D = null;
         
-        if (textComponents.Length > 0)
+        // Method 1: Search for UI version
+        TextMeshProUGUI[] allTextComponentsUI = buttonObj.GetComponentsInChildren<TextMeshProUGUI>(true);
+        if (allTextComponentsUI.Length > 0)
+        {
+            textComponentUI = allTextComponentsUI[0];
+            Debug.Log($"Found TextMeshProUGUI at: {GetGameObjectPath(textComponentUI.gameObject)}");
+        }
+        
+        // Method 2: Search for 3D version (which is what MRTK3 is using)
+        TMPro.TextMeshPro[] allTextComponents3D = buttonObj.GetComponentsInChildren<TMPro.TextMeshPro>(true);
+        if (allTextComponents3D.Length > 0)
+        {
+            textComponent3D = allTextComponents3D[0];
+            Debug.Log($"Found TextMeshPro 3D at: {GetGameObjectPath(textComponent3D.gameObject)}");
+        }
+        
+        // Update the text - prioritize 3D version since that's what MRTK3 uses
+        if (textComponent3D != null || textComponentUI != null)
         {
             if (index < lastThreeInspections.Length)
             {
-                // Display inspection info
+                // Display inspection info in concise format
                 var fileInfo = lastThreeInspections[index];
-                string displayText = CreateDisplayText(fileInfo, index + 1);
-                textComponents[0].text = displayText;
+                string displayText = CreateConciseDisplayText(fileInfo);
+                
+                // Set text on whichever component we found
+                if (textComponent3D != null)
+                {
+                    textComponent3D.text = displayText;
+                }
+                else if (textComponentUI != null)
+                {
+                    textComponentUI.text = displayText;
+                }
                 
                 // Enable the button
                 var button = buttonObj.GetComponent<PressableButton>();
                 if (button != null) button.enabled = true;
+                
+                Debug.Log($"Updated button {index + 1} text: {displayText}");
             }
             else
             {
                 // No inspection available
-                textComponents[0].text = $"Button {index + 1}\nNo inspection";
+                string noInspectionText = "No Inspection";
+                
+                if (textComponent3D != null)
+                {
+                    textComponent3D.text = noInspectionText;
+                }
+                else if (textComponentUI != null)
+                {
+                    textComponentUI.text = noInspectionText;
+                }
                 
                 // Disable the button
                 var button = buttonObj.GetComponent<PressableButton>();
                 if (button != null) button.enabled = false;
             }
         }
+        else
+        {
+            Debug.LogWarning($"Could not find any TextMeshPro component in button {index + 1}");
+            Debug.Log($"Button {index + 1} full structure:\n{GetFullButtonStructure(buttonObj)}");
+        }
+    }
+    
+    // Create concise display format: "Insp. ID 004 - Jun 10, 2025"
+    string CreateConciseDisplayText(InspectionFileInfo fileInfo)
+    {
+        string inspectionNumber = ExtractInspectionNumber(fileInfo);
+        string dateStr = FormatDate(fileInfo);
+        
+        return $"Insp. ID {inspectionNumber} - {dateStr}";
+    }
+    
+    // Helper to get full path of a GameObject
+    string GetGameObjectPath(GameObject obj)
+    {
+        string path = obj.name;
+        Transform parent = obj.transform.parent;
+        
+        while (parent != null)
+        {
+            path = parent.name + "/" + path;
+            parent = parent.parent;
+        }
+        
+        return path;
+    }
+    
+    // More detailed structure debug
+    string GetFullButtonStructure(GameObject buttonObj, int depth = 0, int maxDepth = 5)
+    {
+        if (depth > maxDepth) return "";
+        
+        string indent = new string(' ', depth * 2);
+        string structure = $"{indent}{buttonObj.name}";
+        
+        // Add component info
+        Component[] components = buttonObj.GetComponents<Component>();
+        foreach (Component comp in components)
+        {
+            if (comp is TextMeshProUGUI || comp is TMPro.TextMeshPro || comp is PressableButton)
+            {
+                structure += $" [{comp.GetType().Name}]";
+            }
+        }
+        
+        structure += "\n";
+        
+        // Add children
+        for (int i = 0; i < buttonObj.transform.childCount && depth < maxDepth; i++)
+        {
+            structure += GetFullButtonStructure(buttonObj.transform.GetChild(i).gameObject, depth + 1, maxDepth);
+        }
+        
+        return structure;
     }
     
     string CreateDisplayText(InspectionFileInfo fileInfo, int buttonNumber)
     {
-        // Create a nice display format
-        string timeStr = "";
+        // Extract inspection number from filename or use a counter
+        string inspectionNumber = ExtractInspectionNumber(fileInfo);
+        
+        // Create a nice date format based on settings
+        string dateStr = FormatDate(fileInfo);
+        
+        return $"Inspection #{inspectionNumber}\n{dateStr}";
+    }
+    
+    string FormatDate(InspectionFileInfo fileInfo)
+    {
+        DateTime dateToFormat;
+        
+        // Try to use timestamp first, then creation time
+        if (!string.IsNullOrEmpty(fileInfo.timestamp))
+        {
+            try
+            {
+                dateToFormat = DateTime.Parse(fileInfo.timestamp);
+            }
+            catch
+            {
+                dateToFormat = fileInfo.creationTime;
+            }
+        }
+        else
+        {
+            dateToFormat = fileInfo.creationTime;
+        }
+        
+        // Format based on selected format
+        switch (dateFormat)
+        {
+            case DateFormat.MonthDayYear:
+                return dateToFormat.ToString("MMM dd, yyyy");
+            case DateFormat.DayMonthYear:
+                return dateToFormat.ToString("dd MMM yyyy");
+            case DateFormat.ShortDate:
+                return dateToFormat.ToString("MM/dd/yy");
+            case DateFormat.YearMonthDay:
+                return dateToFormat.ToString("yyyy-MM-dd");
+            case DateFormat.MonthDay:
+                return dateToFormat.ToString("MMM dd");
+            default:
+                return dateToFormat.ToString("MMM dd, yyyy");
+        }
+    }
+    
+    string ExtractInspectionNumber(InspectionFileInfo fileInfo)
+    {
+        // Method 1: Try to get inspection number from the JSON data if preferred
+        if (preferInspectionId && !string.IsNullOrEmpty(fileInfo.inspectionId))
+        {
+            return fileInfo.inspectionId;
+        }
+        
+        // Method 2: Extract number from filename - handle new format with number_timestamp
+        // Example: "bridge_inspection_004_20250610_180910.json" -> "004"
+        string fileName = fileInfo.fileName;
+        if (fileName.Contains("bridge_inspection_"))
+        {
+            string afterPrefix = fileName.Replace("bridge_inspection_", "").Replace(".json", "");
+            
+            // Split by underscores and take the first part (the inspection number)
+            string[] parts = afterPrefix.Split('_');
+            if (parts.Length > 0 && !string.IsNullOrEmpty(parts[0]))
+            {
+                return parts[0]; // This should be the inspection number like "004"
+            }
+        }
+        
+        // Method 3: Use inspection ID as fallback
+        if (!string.IsNullOrEmpty(fileInfo.inspectionId))
+        {
+            return fileInfo.inspectionId;
+        }
+        
+        // Method 4: Use timestamp as unique identifier
         if (!string.IsNullOrEmpty(fileInfo.timestamp))
         {
             try
             {
                 DateTime dt = DateTime.Parse(fileInfo.timestamp);
-                timeStr = dt.ToString("MMM dd, HH:mm");
+                return dt.ToString("yyyyMMdd-HHmm");
             }
             catch
             {
-                timeStr = fileInfo.creationTime.ToString("MMM dd, HH:mm");
+                // Fallback to creation time
+                return fileInfo.creationTime.ToString("yyyyMMdd-HHmm");
             }
         }
-        else
-        {
-            timeStr = fileInfo.creationTime.ToString("MMM dd, HH:mm");
-        }
         
-        string elementStr = string.IsNullOrEmpty(fileInfo.connectedElement) ? "No element" : fileInfo.connectedElement;
-        
-        // Truncate long element names
-        if (elementStr.Length > 15)
-            elementStr = elementStr.Substring(0, 12) + "...";
-        
-        return $"#{buttonNumber}\n{timeStr}\n{elementStr}";
+        // Method 5: Fallback to creation time
+        return fileInfo.creationTime.ToString("yyyyMMdd-HHmm");
     }
     
     void LoadInspection(int index)
