@@ -23,8 +23,16 @@ public class PanelToggleMRTKV2 : MonoBehaviour
     [Tooltip("Method to call when resetting panel to default state")]
     public UnityEngine.Events.UnityEvent OnPanelReset;
     
+    [Header("Connected Systems")]
+    [Tooltip("Reference to SimpleInspectionLoader to refresh after close")]
+    public SimpleInspectionLoader inspectionLoader;
+    
     void Start()
     {
+        // Find SimpleInspectionLoader if not assigned
+        if (inspectionLoader == null)
+            inspectionLoader = FindObjectOfType<SimpleInspectionLoader>();
+        
         // Subscribe to MRTK button events
         toggleButton.OnClicked.AddListener(TogglePanel);
         closeButton.OnClicked.AddListener(HidePanel);
@@ -121,6 +129,13 @@ public class PanelToggleMRTKV2 : MonoBehaviour
         
         // Reset the last button used when panel is hidden
         lastButtonUsed = null;
+        
+        // Refresh inspection loader buttons when panel is closed
+        if (inspectionLoader != null)
+        {
+            inspectionLoader.RefreshInspections();
+            Debug.Log("Refreshed inspection list after panel close");
+        }
     }
     
     void OnDestroy()

@@ -6792,6 +6792,7 @@ MonoBehaviour:
           m_StringArgument: 
           m_BoolArgument: 0
         m_CallState: 2
+  inspectionLoader: {fileID: 451040022}
 --- !u!1 &1832203411
 GameObject:
   m_ObjectHideFlags: 0
