@@ -169,6 +169,8 @@ MonoBehaviour:
   hoverMessage: Enable Area Selection
   hoverTextPrefab: {fileID: 6886670595962192301, guid: b013377b30b063a4cb139ce55517e4f3, type: 3}
   hoverTextOffset: {x: 0, y: 0.03, z: -0.005}
+  enableHandRayHover: 1
+  filterHandRayOnly: 1
 --- !u!1 &15705193 stripped
 GameObject:
   m_CorrespondingSourceObject: {fileID: 2244185731031694095, guid: cd0f0697f0939504389ec612388f609a, type: 3}
@@ -205,6 +207,8 @@ MonoBehaviour:
   hoverMessage: Done
   hoverTextPrefab: {fileID: 6886670595962192301, guid: b013377b30b063a4cb139ce55517e4f3, type: 3}
   hoverTextOffset: {x: 0, y: 0.03, z: -0.005}
+  enableHandRayHover: 1
+  filterHandRayOnly: 1
 --- !u!4 &42975416 stripped
 Transform:
   m_CorrespondingSourceObject: {fileID: 2244185731585867246, guid: cd0f0697f0939504389ec612388f609a, type: 3}
@@ -445,6 +449,8 @@ MonoBehaviour:
   hoverMessage: Unselect Element
   hoverTextPrefab: {fileID: 6886670595962192301, guid: b013377b30b063a4cb139ce55517e4f3, type: 3}
   hoverTextOffset: {x: 0, y: 0.03, z: -0.005}
+  enableHandRayHover: 1
+  filterHandRayOnly: 1
 --- !u!1 &155662973
 GameObject:
   m_ObjectHideFlags: 0
@@ -702,6 +708,8 @@ MonoBehaviour:
   hoverMessage: Remove Last Dot
   hoverTextPrefab: {fileID: 6886670595962192301, guid: b013377b30b063a4cb139ce55517e4f3, type: 3}
   hoverTextOffset: {x: 0, y: 0.03, z: -0.005}
+  enableHandRayHover: 1
+  filterHandRayOnly: 1
 --- !u!1001 &247432849
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -1374,6 +1382,8 @@ MonoBehaviour:
   hoverMessage: Hide Lines
   hoverTextPrefab: {fileID: 6886670595962192301, guid: b013377b30b063a4cb139ce55517e4f3, type: 3}
   hoverTextOffset: {x: 0, y: 0.03, z: -0.005}
+  enableHandRayHover: 1
+  filterHandRayOnly: 1
 --- !u!1 &509837714
 GameObject:
   m_ObjectHideFlags: 0
@@ -1923,6 +1933,8 @@ MonoBehaviour:
   hoverMessage: Remove Last Area
   hoverTextPrefab: {fileID: 6886670595962192301, guid: b013377b30b063a4cb139ce55517e4f3, type: 3}
   hoverTextOffset: {x: 0, y: 0.03, z: -0.005}
+  enableHandRayHover: 1
+  filterHandRayOnly: 1
 --- !u!1 &586881081
 GameObject:
   m_ObjectHideFlags: 0
@@ -1973,6 +1985,18 @@ PrefabInstance:
     serializedVersion: 3
     m_TransformParent: {fileID: 961725939}
     m_Modifications:
+    - target: {fileID: 1503546110793399400, guid: cd0f0697f0939504389ec612388f609a, type: 3}
+      propertyPath: <OnClicked>k__BackingField.m_PersistentCalls.m_Calls.Array.size
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 1503546110793399400, guid: cd0f0697f0939504389ec612388f609a, type: 3}
+      propertyPath: <OnClicked>k__BackingField.m_PersistentCalls.m_Calls.Array.data[0].m_Mode
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 1503546110793399400, guid: cd0f0697f0939504389ec612388f609a, type: 3}
+      propertyPath: <OnClicked>k__BackingField.m_PersistentCalls.m_Calls.Array.data[0].m_CallState
+      value: 2
+      objectReference: {fileID: 0}
     - target: {fileID: 2244185731031694095, guid: cd0f0697f0939504389ec612388f609a, type: 3}
       propertyPath: m_Name
       value: PressableButton_32x32mm_IconOnly (Unhighlight Element)
@@ -2427,6 +2451,8 @@ MonoBehaviour:
   hoverMessage: Hide Area
   hoverTextPrefab: {fileID: 6886670595962192301, guid: b013377b30b063a4cb139ce55517e4f3, type: 3}
   hoverTextOffset: {x: 0, y: 0.03, z: -0.005}
+  enableHandRayHover: 1
+  filterHandRayOnly: 1
 --- !u!1 &755397631
 GameObject:
   m_ObjectHideFlags: 0
@@ -2589,6 +2615,8 @@ MonoBehaviour:
   hoverMessage: Take Picture
   hoverTextPrefab: {fileID: 6886670595962192301, guid: b013377b30b063a4cb139ce55517e4f3, type: 3}
   hoverTextOffset: {x: 0, y: 0.03, z: -0.005}
+  enableHandRayHover: 1
+  filterHandRayOnly: 1
 --- !u!4 &770688136 stripped
 Transform:
   m_CorrespondingSourceObject: {fileID: 2244185731585867246, guid: cd0f0697f0939504389ec612388f609a, type: 3}
@@ -2620,6 +2648,8 @@ MonoBehaviour:
   hoverMessage: Model Menu
   hoverTextPrefab: {fileID: 6886670595962192301, guid: b013377b30b063a4cb139ce55517e4f3, type: 3}
   hoverTextOffset: {x: 0, y: 0.03, z: -0.005}
+  enableHandRayHover: 1
+  filterHandRayOnly: 1
 --- !u!1 &788043779
 GameObject:
   m_ObjectHideFlags: 0
@@ -5094,6 +5124,8 @@ MonoBehaviour:
   hoverMessage: Close Loop
   hoverTextPrefab: {fileID: 6886670595962192301, guid: b013377b30b063a4cb139ce55517e4f3, type: 3}
   hoverTextOffset: {x: 0, y: 0.03, z: -0.005}
+  enableHandRayHover: 1
+  filterHandRayOnly: 1
 --- !u!1001 &1315182022
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -5767,6 +5799,8 @@ MonoBehaviour:
   hoverMessage: Button hover text
   hoverTextPrefab: {fileID: 0}
   hoverTextOffset: {x: 0, y: 0.03, z: -0.005}
+  enableHandRayHover: 1
+  filterHandRayOnly: 1
 --- !u!1 &1377857113
 GameObject:
   m_ObjectHideFlags: 0
@@ -6087,6 +6121,8 @@ MonoBehaviour:
   hoverMessage: Select Inspection Type
   hoverTextPrefab: {fileID: 6886670595962192301, guid: b013377b30b063a4cb139ce55517e4f3, type: 3}
   hoverTextOffset: {x: 0, y: 0.03, z: -0.005}
+  enableHandRayHover: 1
+  filterHandRayOnly: 1
 --- !u!1001 &1477104772
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -6425,6 +6461,10 @@ PrefabInstance:
       propertyPath: m_IsActive
       value: 1
       objectReference: {fileID: 0}
+    - target: {fileID: 7152169351526623445, guid: 35f4f70e6c175f544a0f00654eedbf34, type: 3}
+      propertyPath: trackedHandedness
+      value: 1
+      objectReference: {fileID: 0}
     m_RemovedComponents: []
     m_RemovedGameObjects: []
     m_AddedGameObjects:
@@ -6588,6 +6628,8 @@ MonoBehaviour:
   hoverMessage: Inspection Panel
   hoverTextPrefab: {fileID: 6886670595962192301, guid: b013377b30b063a4cb139ce55517e4f3, type: 3}
   hoverTextOffset: {x: 0, y: 0.03, z: -0.005}
+  enableHandRayHover: 1
+  filterHandRayOnly: 1
 --- !u!1 &1626990354
 GameObject:
   m_ObjectHideFlags: 0
@@ -6677,6 +6719,8 @@ MonoBehaviour:
   hoverMessage: Export Dot Coordinates
   hoverTextPrefab: {fileID: 6886670595962192301, guid: b013377b30b063a4cb139ce55517e4f3, type: 3}
   hoverTextOffset: {x: 0, y: 0.03, z: -0.005}
+  enableHandRayHover: 1
+  filterHandRayOnly: 1
 --- !u!1001 &1664330987
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -7211,6 +7255,8 @@ MonoBehaviour:
   hoverMessage: Delete All Dots
   hoverTextPrefab: {fileID: 6886670595962192301, guid: b013377b30b063a4cb139ce55517e4f3, type: 3}
   hoverTextOffset: {x: 0, y: 0.03, z: -0.005}
+  enableHandRayHover: 1
+  filterHandRayOnly: 1
 --- !u!1 &1825996074
 GameObject:
   m_ObjectHideFlags: 0
@@ -8105,6 +8151,8 @@ MonoBehaviour:
   hoverMessage: Hide Dots
   hoverTextPrefab: {fileID: 6886670595962192301, guid: b013377b30b063a4cb139ce55517e4f3, type: 3}
   hoverTextOffset: {x: 0, y: 0.03, z: -0.005}
+  enableHandRayHover: 1
+  filterHandRayOnly: 1
 --- !u!4 &1874795714 stripped
 Transform:
   m_CorrespondingSourceObject: {fileID: 2244185731585867246, guid: cd0f0697f0939504389ec612388f609a, type: 3}
@@ -8136,6 +8184,8 @@ MonoBehaviour:
   hoverMessage: Inspection Menu
   hoverTextPrefab: {fileID: 6886670595962192301, guid: b013377b30b063a4cb139ce55517e4f3, type: 3}
   hoverTextOffset: {x: 0, y: 0.03, z: -0.005}
+  enableHandRayHover: 1
+  filterHandRayOnly: 1
 --- !u!1 &1944555442
 GameObject:
   m_ObjectHideFlags: 0
@@ -8189,6 +8239,8 @@ MonoBehaviour:
   hoverMessage: Delete Picture
   hoverTextPrefab: {fileID: 6886670595962192301, guid: b013377b30b063a4cb139ce55517e4f3, type: 3}
   hoverTextOffset: {x: 0, y: 0.03, z: -0.005}
+  enableHandRayHover: 1
+  filterHandRayOnly: 1
 --- !u!4 &1959974216 stripped
 Transform:
   m_CorrespondingSourceObject: {fileID: 2244185731585867246, guid: cd0f0697f0939504389ec612388f609a, type: 3}
@@ -8250,6 +8302,8 @@ MonoBehaviour:
   hoverMessage: Delete Entry
   hoverTextPrefab: {fileID: 6886670595962192301, guid: b013377b30b063a4cb139ce55517e4f3, type: 3}
   hoverTextOffset: {x: 0, y: 0.03, z: -0.005}
+  enableHandRayHover: 1
+  filterHandRayOnly: 1
 --- !u!1 &2004619801
 GameObject:
   m_ObjectHideFlags: 0
@@ -8419,6 +8473,8 @@ MonoBehaviour:
   hoverMessage: Select Damage Type
   hoverTextPrefab: {fileID: 6886670595962192301, guid: b013377b30b063a4cb139ce55517e4f3, type: 3}
   hoverTextOffset: {x: 0, y: 0.03, z: -0.005}
+  enableHandRayHover: 1
+  filterHandRayOnly: 1
 --- !u!1 &2071377576 stripped
 GameObject:
   m_CorrespondingSourceObject: {fileID: 2244185731031694095, guid: cd0f0697f0939504389ec612388f609a, type: 3}
@@ -8455,6 +8511,8 @@ MonoBehaviour:
   hoverMessage: Create New Entry
   hoverTextPrefab: {fileID: 6886670595962192301, guid: b013377b30b063a4cb139ce55517e4f3, type: 3}
   hoverTextOffset: {x: 0, y: 0.03, z: -0.005}
+  enableHandRayHover: 1
+  filterHandRayOnly: 1
 --- !u!1001 &2083254057
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -8652,6 +8710,8 @@ MonoBehaviour:
   hoverMessage: Save Entry
   hoverTextPrefab: {fileID: 6886670595962192301, guid: b013377b30b063a4cb139ce55517e4f3, type: 3}
   hoverTextOffset: {x: 0, y: 0.03, z: -0.005}
+  enableHandRayHover: 1
+  filterHandRayOnly: 1
 --- !u!1 &2126507698
 GameObject:
   m_ObjectHideFlags: 0
