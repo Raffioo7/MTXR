@@ -19,6 +19,10 @@ public class PanelToggleMRTKV2 : MonoBehaviour
     // Track which button opened the panel
     private PressableButton lastButtonUsed = null;
     
+    [Header("Panel Content Reset")]
+    [Tooltip("Method to call when resetting panel to default state")]
+    public UnityEngine.Events.UnityEvent OnPanelReset;
+    
     void Start()
     {
         // Subscribe to MRTK button events
@@ -41,10 +45,22 @@ public class PanelToggleMRTKV2 : MonoBehaviour
     {
         if (panel.activeSelf)
         {
-            HidePanel();
+            // Panel is open
+            if (lastButtonUsed == toggleButton)
+            {
+                // Toggle button was last used - close the panel
+                HidePanel();
+            }
+            else
+            {
+                // Different button was last used - reset panel contents but keep it open
+                ResetPanelToDefault();
+                lastButtonUsed = toggleButton;
+            }
         }
         else
         {
+            // Panel is closed - open it normally
             ShowPanel();
             lastButtonUsed = toggleButton; // Remember main toggle button opened it
         }
@@ -83,6 +99,14 @@ public class PanelToggleMRTKV2 : MonoBehaviour
             additionalButton2.gameObject.SetActive(true);
         if (additionalButton3 != null)
             additionalButton3.gameObject.SetActive(true);
+    }
+    
+    void ResetPanelToDefault()
+    {
+        // Invoke the reset event - this allows you to define what "default" means in the inspector
+        OnPanelReset?.Invoke();
+        
+        Debug.Log("Panel contents reset to default state");
     }
     
     void HidePanel()

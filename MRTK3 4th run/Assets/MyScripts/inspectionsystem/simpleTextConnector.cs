@@ -49,6 +49,43 @@ public class SimpleTextReader : MonoBehaviour
     [Tooltip("Filename to load (without .json extension). Leave empty to load most recent file.")]
     public string fileToLoad = "";
     
+    // Add this section to your SimpleTextReader script
+
+    [Header("Default Placeholder Text")]
+    [Tooltip("Default placeholder text for Text Field 1")]
+    public string defaultTextField1Text = "Enter your text here...";
+
+    [Tooltip("Default placeholder text for Text Field 2")]
+    public string defaultTextField2Text = "Additional notes...";
+
+    [Tooltip("Default placeholder text for Input Field 1")]
+    public string defaultInputField1Text = "Type here...";
+
+// Add this method to your SimpleTextReader script
+    public void RestoreDefaultPlaceholders()
+    {
+        if (textField1 != null) 
+            textField1.text = defaultTextField1Text;
+        if (textField2 != null) 
+            textField2.text = defaultTextField2Text;
+        if (inputField1 != null) 
+            inputField1.text = defaultInputField1Text;
+    
+        Debug.Log("Restored default placeholder text!");
+    }
+
+// Optional: Store initial values automatically on Start
+    void StoreInitialPlaceholders()
+    {
+        // This would run in Start() to automatically capture whatever text is already there
+        if (textField1 != null && string.IsNullOrEmpty(defaultTextField1Text))
+            defaultTextField1Text = textField1.text;
+        if (textField2 != null && string.IsNullOrEmpty(defaultTextField2Text))
+            defaultTextField2Text = textField2.text;
+        if (inputField1 != null && string.IsNullOrEmpty(defaultInputField1Text))
+            defaultInputField1Text = inputField1.text;
+    }
+    
     // Private variables for numbering
     private int currentInspectionNumber;
     private string numberingDataFile = "inspection_numbering.json";

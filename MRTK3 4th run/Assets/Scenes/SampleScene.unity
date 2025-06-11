@@ -2167,6 +2167,9 @@ MonoBehaviour:
   loadButtonObject: {fileID: 0}
   propertyHandler: {fileID: 1849552043}
   fileToLoad: 
+  defaultTextField1Text: Choose Damage Type
+  defaultTextField2Text: Choose Inspection Type
+  defaultInputField1Text: Comments
 --- !u!1 &721966749
 GameObject:
   m_ObjectHideFlags: 0
@@ -6774,6 +6777,21 @@ MonoBehaviour:
   additionalToggleButton1: {fileID: 4186975940905220366}
   additionalToggleButton2: {fileID: 869330383}
   additionalToggleButton3: {fileID: 1510957593}
+  OnPanelReset:
+    m_PersistentCalls:
+      m_Calls:
+      - m_Target: {fileID: 699511633}
+        m_TargetAssemblyTypeName: SimpleTextReader, Assembly-CSharp
+        m_MethodName: RestoreDefaultPlaceholders
+        m_Mode: 1
+        m_Arguments:
+          m_ObjectArgument: {fileID: 0}
+          m_ObjectArgumentAssemblyTypeName: UnityEngine.Object, UnityEngine
+          m_IntArgument: 0
+          m_FloatArgument: 0
+          m_StringArgument: 
+          m_BoolArgument: 0
+        m_CallState: 2
 --- !u!1 &1832203411
 GameObject:
   m_ObjectHideFlags: 0
