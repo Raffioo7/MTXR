@@ -6,7 +6,7 @@ public class ButtonHoverText : MonoBehaviour, IPointerEnterHandler, IPointerExit
 {
     [SerializeField] private string hoverMessage = "Button hover text";
     [SerializeField] private GameObject hoverTextPrefab; // Drag your prefab here
-    [SerializeField] private Vector3 hoverTextOffset = new Vector3(0, 0.1f, 0); // Position relative to button
+    [SerializeField] private Vector3 hoverTextOffset = new Vector3(0, 0.03f, -0.005f); // Position relative to button
     
     private GameObject hoverTextInstance;
     private TextMeshPro hoverTextComponent;
