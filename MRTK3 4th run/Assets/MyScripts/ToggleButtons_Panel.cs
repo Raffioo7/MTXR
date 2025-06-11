@@ -34,7 +34,7 @@ public class PanelToggleMRTKV2 : MonoBehaviour
     public SimpleTextReader textReader;
     
     [Header("Close Button Behavior")]
-    [Tooltip("Clear all dots and loops when panel is closed")]
+    [Tooltip("Clear all dots and loops when panel is closed via close button")]
     public bool clearLoopsOnClose = true;
     
     [Tooltip("Save inspection data (including loops) when close button is pressed")]
@@ -42,6 +42,13 @@ public class PanelToggleMRTKV2 : MonoBehaviour
     
     [Tooltip("Only save if there's actual content (text, input, or loops)")]
     public bool saveOnlyIfContentExists = true;
+    
+    [Header("Toggle Button Behavior")]
+    [Tooltip("Clear all dots and loops when toggle button is pressed (independent of panel state)")]
+    public bool clearLoopsOnToggle = true;
+    
+    [Tooltip("Save inspection data when toggle button clears loops")]
+    public bool saveInspectionOnToggle = true;
     
     void Start()
     {
@@ -75,13 +82,19 @@ public class PanelToggleMRTKV2 : MonoBehaviour
     
     void TogglePanel()
     {
+        // Always handle loop clearing first when toggle button is pressed
+        if (clearLoopsOnToggle)
+        {
+            HandleLoopClearingOnToggle("main toggle button");
+        }
+        
         if (panel.activeSelf)
         {
             // Panel is open
             if (lastButtonUsed == toggleButton)
             {
                 // Toggle button was last used - close the panel
-                HidePanel();
+                HidePanelFromToggle();
             }
             else
             {
@@ -100,13 +113,19 @@ public class PanelToggleMRTKV2 : MonoBehaviour
     
     void ConditionalToggle(PressableButton clickedButton)
     {
+        // Always handle loop clearing first when additional toggle button is pressed
+        if (clearLoopsOnToggle)
+        {
+            HandleLoopClearingOnToggle($"additional toggle button ({clickedButton.name})");
+        }
+        
         if (panel.activeSelf)
         {
             // Panel is open
             if (lastButtonUsed == clickedButton)
             {
                 // Same button clicked - close the panel
-                HidePanel();
+                HidePanelFromToggle();
             }
             else
             {
@@ -149,7 +168,7 @@ public class PanelToggleMRTKV2 : MonoBehaviour
     
     void HidePanel()
     {
-        // Save inspection data with loop system if enabled
+        // Save inspection data with loop system if enabled (close button behavior)
         if (saveInspectionOnClose && textReader != null)
         {
             bool hasContent = CheckIfContentExists();
@@ -176,11 +195,11 @@ public class PanelToggleMRTKV2 : MonoBehaviour
         // Reset the last button used when panel is hidden
         lastButtonUsed = null;
         
-        // Clear all dots and loops when panel is closed (after saving)
+        // Clear all dots and loops when panel is closed via close button (after saving)
         if (clearLoopsOnClose && dotManagementExtension != null)
         {
             dotManagementExtension.ClearAllDots();
-            Debug.Log("Cleared all dots and loops after panel close");
+            Debug.Log("Cleared all dots and loops after panel close (close button)");
         }
         
         // Refresh inspection loader buttons when panel is closed
@@ -188,6 +207,56 @@ public class PanelToggleMRTKV2 : MonoBehaviour
         {
             inspectionLoader.RefreshInspections();
             Debug.Log("Refreshed inspection list after panel close");
+        }
+    }
+    
+    void HidePanelFromToggle()
+    {
+        // This is called when toggle buttons actually close the panel
+        // Loop clearing was already handled in the toggle methods
+        
+        panel.SetActive(false);
+        if (additionalButton1 != null)
+            additionalButton1.gameObject.SetActive(false);
+        if (additionalButton2 != null)
+            additionalButton2.gameObject.SetActive(false);
+        if (additionalButton3 != null)
+            additionalButton3.gameObject.SetActive(false);
+        
+        // Reset the last button used when panel is hidden
+        lastButtonUsed = null;
+        
+        // Refresh inspection loader buttons when panel is closed
+        if (inspectionLoader != null)
+        {
+            inspectionLoader.RefreshInspections();
+            Debug.Log("Refreshed inspection list after panel close (toggle button)");
+        }
+    }
+    
+    void HandleLoopClearingOnToggle(string buttonName)
+    {
+        // Save inspection data before clearing loops if enabled
+        if (saveInspectionOnToggle && textReader != null)
+        {
+            bool hasContent = CheckIfContentExists();
+            
+            if (!saveOnlyIfContentExists || hasContent)
+            {
+                SaveInspectionWithLoops();
+                Debug.Log($"Saved inspection data before clearing loops ({buttonName})");
+            }
+            else
+            {
+                Debug.Log($"No content to save when {buttonName} pressed");
+            }
+        }
+        
+        // Clear loops regardless of panel state
+        if (dotManagementExtension != null)
+        {
+            dotManagementExtension.ClearAllDots();
+            Debug.Log($"Cleared all dots and loops when {buttonName} pressed");
         }
     }
     
