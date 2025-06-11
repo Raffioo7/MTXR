@@ -27,11 +27,35 @@ public class PanelToggleMRTKV2 : MonoBehaviour
     [Tooltip("Reference to SimpleInspectionLoader to refresh after close")]
     public SimpleInspectionLoader inspectionLoader;
     
+    [Tooltip("Reference to DotManagementExtension to clear loops when panel closes")]
+    public DotManagementExtension_MRTK3 dotManagementExtension;
+    
+    [Tooltip("Reference to SimpleTextReader to save inspection data when panel closes")]
+    public SimpleTextReader textReader;
+    
+    [Header("Close Button Behavior")]
+    [Tooltip("Clear all dots and loops when panel is closed")]
+    public bool clearLoopsOnClose = true;
+    
+    [Tooltip("Save inspection data (including loops) when close button is pressed")]
+    public bool saveInspectionOnClose = true;
+    
+    [Tooltip("Only save if there's actual content (text, input, or loops)")]
+    public bool saveOnlyIfContentExists = true;
+    
     void Start()
     {
         // Find SimpleInspectionLoader if not assigned
         if (inspectionLoader == null)
             inspectionLoader = FindObjectOfType<SimpleInspectionLoader>();
+        
+        // Find DotManagementExtension if not assigned
+        if (dotManagementExtension == null)
+            dotManagementExtension = FindObjectOfType<DotManagementExtension_MRTK3>();
+        
+        // Find SimpleTextReader if not assigned
+        if (textReader == null)
+            textReader = FindObjectOfType<SimpleTextReader>();
         
         // Subscribe to MRTK button events
         toggleButton.OnClicked.AddListener(TogglePanel);
@@ -114,11 +138,33 @@ public class PanelToggleMRTKV2 : MonoBehaviour
         // Invoke the reset event - this allows you to define what "default" means in the inspector
         OnPanelReset?.Invoke();
         
+        // Also restore default placeholders if textReader is available
+        if (textReader != null)
+        {
+            textReader.RestoreDefaultPlaceholders();
+        }
+        
         Debug.Log("Panel contents reset to default state");
     }
     
     void HidePanel()
     {
+        // Save inspection data with loop system if enabled
+        if (saveInspectionOnClose && textReader != null)
+        {
+            bool hasContent = CheckIfContentExists();
+            
+            if (!saveOnlyIfContentExists || hasContent)
+            {
+                SaveInspectionWithLoops();
+                Debug.Log("Saved inspection data with loop system before closing panel");
+            }
+            else
+            {
+                Debug.Log("No content to save - skipping inspection save");
+            }
+        }
+        
         panel.SetActive(false);
         if (additionalButton1 != null)
             additionalButton1.gameObject.SetActive(false);
@@ -130,12 +176,70 @@ public class PanelToggleMRTKV2 : MonoBehaviour
         // Reset the last button used when panel is hidden
         lastButtonUsed = null;
         
+        // Clear all dots and loops when panel is closed (after saving)
+        if (clearLoopsOnClose && dotManagementExtension != null)
+        {
+            dotManagementExtension.ClearAllDots();
+            Debug.Log("Cleared all dots and loops after panel close");
+        }
+        
         // Refresh inspection loader buttons when panel is closed
         if (inspectionLoader != null)
         {
             inspectionLoader.RefreshInspections();
             Debug.Log("Refreshed inspection list after panel close");
         }
+    }
+    
+    bool CheckIfContentExists()
+    {
+        if (textReader == null) return false;
+        
+        // Check text fields
+        bool hasTextContent = false;
+        if (textReader.textField1 != null && !string.IsNullOrEmpty(textReader.textField1.text) && 
+            textReader.textField1.text != textReader.defaultTextField1Text)
+        {
+            hasTextContent = true;
+        }
+        if (textReader.textField2 != null && !string.IsNullOrEmpty(textReader.textField2.text) && 
+            textReader.textField2.text != textReader.defaultTextField2Text)
+        {
+            hasTextContent = true;
+        }
+        if (textReader.inputField1 != null && !string.IsNullOrEmpty(textReader.inputField1.text) && 
+            textReader.inputField1.text != textReader.defaultInputField1Text)
+        {
+            hasTextContent = true;
+        }
+        
+        // Check loop content
+        bool hasLoopContent = false;
+        if (dotManagementExtension != null)
+        {
+            DotPlacementHandler_MRTK3 dotHandler = FindObjectOfType<DotPlacementHandler_MRTK3>();
+            if (dotHandler != null)
+            {
+                int completedLoops = dotHandler.GetCompletedLoopCount();
+                int currentLoopDots = dotHandler.GetCurrentLoopDotCount();
+                hasLoopContent = completedLoops > 0 || currentLoopDots > 0;
+            }
+        }
+        
+        Debug.Log($"Content check - Text: {hasTextContent}, Loops: {hasLoopContent}");
+        return hasTextContent || hasLoopContent;
+    }
+    
+    void SaveInspectionWithLoops()
+    {
+        if (textReader == null)
+        {
+            Debug.LogWarning("Cannot save inspection - SimpleTextReader not found");
+            return;
+        }
+        
+        // Use the enhanced save method that includes loop data
+        textReader.SaveAllTextWithLoopsToJSON();
     }
     
     void OnDestroy()

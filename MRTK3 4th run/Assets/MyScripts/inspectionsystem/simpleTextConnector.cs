@@ -4,9 +4,10 @@ using MixedReality.Toolkit.UX;
 using System;
 using System.IO;
 using System.Linq;
+using System.Collections.Generic;
 
 /// <summary>
-/// Reads text from multiple TMP fields and MRTK3 input field, saves to JSON with auto-incrementing numbers
+/// Enhanced SimpleTextReader that can save loop system data along with text fields
 /// </summary>
 public class SimpleTextReader : MonoBehaviour
 {
@@ -45,12 +46,23 @@ public class SimpleTextReader : MonoBehaviour
     [Tooltip("Drag your PropertyClickHandler_MRTK3 component here")]
     public PropertyClickHandler_MRTK3 propertyHandler;
     
+    [Header("Loop System Integration")]
+    [Tooltip("Drag your DotPlacementHandler_MRTK3 component here")]
+    public DotPlacementHandler_MRTK3 dotPlacementHandler;
+    
+    [Tooltip("Drag your LineConnectionHandler_MRTK3 component here")]
+    public LineConnectionHandler_MRTK3 lineConnectionHandler;
+    
+    [Tooltip("Drag your LoopAreaShader_MRTK3 component here")]
+    public LoopAreaShader_MRTK3 loopAreaShader;
+    
+    [Tooltip("Drag your LoopSystemLoader component here")]
+    public LoopSystemLoader loopSystemLoader;
+    
     [Header("Load Settings")]
     [Tooltip("Filename to load (without .json extension). Leave empty to load most recent file.")]
     public string fileToLoad = "";
     
-    // Add this section to your SimpleTextReader script
-
     [Header("Default Placeholder Text")]
     [Tooltip("Default placeholder text for Text Field 1")]
     public string defaultTextField1Text = "Enter your text here...";
@@ -60,8 +72,37 @@ public class SimpleTextReader : MonoBehaviour
 
     [Tooltip("Default placeholder text for Input Field 1")]
     public string defaultInputField1Text = "Type here...";
-
-// Add this method to your SimpleTextReader script
+    
+    // Private variables for numbering
+    private int currentInspectionNumber;
+    private string numberingDataFile = "inspection_numbering.json";
+    
+    void Start()
+    {
+        // Find PropertyClickHandler if not assigned
+        if (propertyHandler == null)
+            propertyHandler = FindObjectOfType<PropertyClickHandler_MRTK3>();
+        
+        // Find loop system components if not assigned
+        if (dotPlacementHandler == null)
+            dotPlacementHandler = FindObjectOfType<DotPlacementHandler_MRTK3>();
+        if (lineConnectionHandler == null)
+            lineConnectionHandler = FindObjectOfType<LineConnectionHandler_MRTK3>();
+        if (loopAreaShader == null)
+            loopAreaShader = FindObjectOfType<LoopAreaShader_MRTK3>();
+        if (loopSystemLoader == null)
+            loopSystemLoader = FindObjectOfType<LoopSystemLoader>();
+        
+        // Store initial placeholders automatically
+        StoreInitialPlaceholders();
+        
+        // Initialize numbering system
+        InitializeNumberingSystem();
+        
+        SetupButtons();
+        LogAssignedFields();
+    }
+    
     public void RestoreDefaultPlaceholders()
     {
         if (textField1 != null) 
@@ -74,7 +115,6 @@ public class SimpleTextReader : MonoBehaviour
         Debug.Log("Restored default placeholder text!");
     }
 
-// Optional: Store initial values automatically on Start
     void StoreInitialPlaceholders()
     {
         // This would run in Start() to automatically capture whatever text is already there
@@ -84,23 +124,6 @@ public class SimpleTextReader : MonoBehaviour
             defaultTextField2Text = textField2.text;
         if (inputField1 != null && string.IsNullOrEmpty(defaultInputField1Text))
             defaultInputField1Text = inputField1.text;
-    }
-    
-    // Private variables for numbering
-    private int currentInspectionNumber;
-    private string numberingDataFile = "inspection_numbering.json";
-    
-    void Start()
-    {
-        // Find PropertyClickHandler if not assigned
-        if (propertyHandler == null)
-            propertyHandler = FindObjectOfType<PropertyClickHandler_MRTK3>();
-        
-        // Initialize numbering system
-        InitializeNumberingSystem();
-        
-        SetupButtons();
-        LogAssignedFields();
     }
     
     void OnValidate()
@@ -158,7 +181,7 @@ public class SimpleTextReader : MonoBehaviour
                 try
                 {
                     string jsonContent = File.ReadAllText(file);
-                    MultiFieldInspectionData data = JsonUtility.FromJson<MultiFieldInspectionData>(jsonContent);
+                    EnhancedInspectionData data = JsonUtility.FromJson<EnhancedInspectionData>(jsonContent);
                     
                     if (data != null && !string.IsNullOrEmpty(data.inspectionNumber))
                     {
@@ -237,7 +260,7 @@ public class SimpleTextReader : MonoBehaviour
             
             if (saveButton != null)
             {
-                saveButton.OnClicked.AddListener(SaveAllTextToJSON);
+                saveButton.OnClicked.AddListener(SaveAllTextWithLoopsToJSON);
                 Debug.Log("Save button connected!");
             }
         }
@@ -267,12 +290,26 @@ public class SimpleTextReader : MonoBehaviour
         if (inputField1 != null)
             Debug.Log($"Input Field 1: '{inputField1.gameObject.name}' - Current: '{inputField1.text}'");
         
+        // Log loop system connections
+        Debug.Log("=== LOOP SYSTEM CONNECTIONS ===");
+        Debug.Log($"DotPlacementHandler: {(dotPlacementHandler != null ? "Connected" : "Not Found")}");
+        Debug.Log($"LineConnectionHandler: {(lineConnectionHandler != null ? "Connected" : "Not Found")}");
+        Debug.Log($"LoopAreaShader: {(loopAreaShader != null ? "Connected" : "Not Found")}");
+        Debug.Log($"LoopSystemLoader: {(loopSystemLoader != null ? "Connected" : "Not Found")}");
+        
         Debug.Log($"Text reader ready. Next inspection number: {GetNextInspectionNumberFormatted()}");
     }
     
+    // Original method - keeps for backward compatibility
     public void SaveAllTextToJSON()
     {
-        Debug.Log("=== CAPTURING ALL TEXT FIELDS ===");
+        SaveAllTextWithLoopsToJSON();
+    }
+    
+    // Enhanced method that includes loop system data
+    public void SaveAllTextWithLoopsToJSON()
+    {
+        Debug.Log("=== CAPTURING ALL TEXT FIELDS AND LOOP SYSTEM ===");
         
         string text1 = textField1 != null ? (textField1.text ?? "") : "";
         string text2 = textField2 != null ? (textField2.text ?? "") : "";
@@ -288,7 +325,65 @@ public class SimpleTextReader : MonoBehaviour
         // Get highlighted element info
         ElementInfo elementInfo = GetHighlightedElementInfo();
         
-        SaveToJSON(text1, text2, input1, elementInfo);
+        // Get loop system data
+        LoopSystemData loopData = GetLoopSystemData();
+        
+        SaveToEnhancedJSON(text1, text2, input1, elementInfo, loopData);
+    }
+    
+    LoopSystemData GetLoopSystemData()
+    {
+        var loopData = new LoopSystemData();
+        
+        if (dotPlacementHandler != null)
+        {
+            // Get all loop positions
+            var allLoops = dotPlacementHandler.GetAllLoopPositions();
+            loopData.loops = new List<LoopData>();
+            
+            int completedLoops = dotPlacementHandler.GetCompletedLoopCount();
+            
+            for (int i = 0; i < allLoops.Count; i++)
+            {
+                var loopPositions = allLoops[i];
+                var loopInfo = new LoopData
+                {
+                    loopIndex = i,
+                    isCompleted = i < completedLoops,
+                    dotCount = loopPositions.Count,
+                    positions = loopPositions.ToArray()
+                };
+                
+                loopData.loops.Add(loopInfo);
+            }
+            
+            loopData.totalCompletedLoops = completedLoops;
+            loopData.currentLoopDotCount = dotPlacementHandler.GetCurrentLoopDotCount();
+            
+            Debug.Log($"Captured {loopData.loops.Count} loops ({completedLoops} completed, {loopData.currentLoopDotCount} dots in current)");
+        }
+        
+        // Get line information
+        if (lineConnectionHandler != null)
+        {
+            loopData.totalLineCount = lineConnectionHandler.GetLineCount();
+            var lineSegments = lineConnectionHandler.GetAllLineSegments();
+            loopData.lineSegmentCount = lineSegments.Count;
+            
+            Debug.Log($"Captured {loopData.totalLineCount} lines with {loopData.lineSegmentCount} segments");
+        }
+        
+        // Get shaded area information
+        if (loopAreaShader != null)
+        {
+            loopData.shadedAreaCount = loopAreaShader.GetShadedAreaCount();
+            
+            Debug.Log($"Captured {loopData.shadedAreaCount} shaded areas");
+        }
+        
+        loopData.captureTimestamp = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss");
+        
+        return loopData;
     }
     
     ElementInfo GetHighlightedElementInfo()
@@ -386,7 +481,8 @@ public class SimpleTextReader : MonoBehaviour
             string jsonContent = File.ReadAllText(filePath);
             Debug.Log($"Loading from: {filePath}");
             
-            MultiFieldInspectionData loadedData = JsonUtility.FromJson<MultiFieldInspectionData>(jsonContent);
+            // Try to load as enhanced data first, then fall back to legacy format
+            EnhancedInspectionData loadedData = JsonUtility.FromJson<EnhancedInspectionData>(jsonContent);
             
             if (loadedData == null)
             {
@@ -394,9 +490,9 @@ public class SimpleTextReader : MonoBehaviour
                 return;
             }
             
-            PopulateFieldsFromData(loadedData);
+            PopulateFieldsFromEnhancedData(loadedData);
             
-            Debug.Log($"SUCCESS! Loaded inspection data from {Path.GetFileName(filePath)}");
+            Debug.Log($"SUCCESS! Loaded enhanced inspection data from {Path.GetFileName(filePath)}");
             Debug.Log($"Inspection Number: {loadedData.inspectionNumber}");
             Debug.Log($"Inspection ID: {loadedData.inspectionId}");
             Debug.Log($"Timestamp: {loadedData.timestamp}");
@@ -407,10 +503,11 @@ public class SimpleTextReader : MonoBehaviour
         }
     }
     
-    void PopulateFieldsFromData(MultiFieldInspectionData data)
+    void PopulateFieldsFromEnhancedData(EnhancedInspectionData data)
     {
-        Debug.Log("=== POPULATING FIELDS FROM LOADED DATA ===");
+        Debug.Log("=== POPULATING FIELDS FROM ENHANCED DATA ===");
         
+        // Populate text fields
         if (textField1 != null)
         {
             textField1.text = data.textField1 ?? "";
@@ -427,6 +524,26 @@ public class SimpleTextReader : MonoBehaviour
         {
             inputField1.text = data.inputField1 ?? "";
             Debug.Log($"Loaded into Input Field 1: '{data.inputField1}'");
+        }
+        
+        // Restore loop system if available
+        if (data.loopSystemData != null && data.loopSystemData.loops != null && data.loopSystemData.loops.Count > 0)
+        {
+            Debug.Log($"Found {data.loopSystemData.loops.Count} loops in saved data");
+            
+            if (loopSystemLoader != null)
+            {
+                Debug.Log("Restoring loop system from saved data...");
+                loopSystemLoader.LoadLoopSystem(data.loopSystemData);
+            }
+            else
+            {
+                Debug.LogWarning("LoopSystemLoader not found - cannot restore loops. Add LoopSystemLoader component to enable loop restoration.");
+            }
+        }
+        else
+        {
+            Debug.Log("No loop data found in saved inspection");
         }
         
         Debug.Log("All fields populated with loaded data!");
@@ -462,23 +579,33 @@ public class SimpleTextReader : MonoBehaviour
         }
     }
     
-    void SaveToJSON(string textField1Content, string textField2Content, string inputField1Content, ElementInfo elementInfo)
+    void SaveToEnhancedJSON(string textField1Content, string textField2Content, string inputField1Content, ElementInfo elementInfo, LoopSystemData loopSystemData)
     {
         // Get the current inspection number and increment for next time
         string inspectionNumber = currentInspectionNumber.ToString(numberFormat);
         
-        var inspectionData = new MultiFieldInspectionData
+        var inspectionData = new EnhancedInspectionData
         {
+            // Basic inspection info
             inspectionNumber = inspectionNumber,
             inspectionId = Guid.NewGuid().ToString(),
             timestamp = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss"),
+            
+            // Text field data
             textField1 = textField1Content,
             textField2 = textField2Content,
             inputField1 = inputField1Content,
+            
+            // Element connection data
             connectedElementName = elementInfo.elementName,
             connectedElementID = elementInfo.elementID,
             elementProperties = elementInfo.elementProperties,
-            captureInfo = $"Inspection #{inspectionNumber} - Captured {DateTime.Now:HH:mm:ss} - Fields: {(string.IsNullOrEmpty(textField1Content) ? 0 : 1) + (string.IsNullOrEmpty(textField2Content) ? 0 : 1) + (string.IsNullOrEmpty(inputField1Content) ? 0 : 1)} with data, Element: {elementInfo.elementName}"
+            
+            // Loop system data
+            loopSystemData = loopSystemData,
+            
+            // Enhanced capture info
+            captureInfo = $"Enhanced Inspection #{inspectionNumber} - Captured {DateTime.Now:HH:mm:ss} - Fields: {(string.IsNullOrEmpty(textField1Content) ? 0 : 1) + (string.IsNullOrEmpty(textField2Content) ? 0 : 1) + (string.IsNullOrEmpty(inputField1Content) ? 0 : 1)} with data, Element: {elementInfo.elementName}, Loops: {loopSystemData.loops?.Count ?? 0} ({loopSystemData.totalCompletedLoops} completed)"
         };
         
         try
@@ -494,11 +621,12 @@ public class SimpleTextReader : MonoBehaviour
             currentInspectionNumber++;
             SaveNumberingData();
             
-            Debug.Log($"SUCCESS! Saved inspection #{inspectionNumber} to: {filePath}");
+            Debug.Log($"SUCCESS! Saved enhanced inspection #{inspectionNumber} to: {filePath}");
             Debug.Log($"Text Field 1: '{textField1Content}'");
             Debug.Log($"Text Field 2: '{textField2Content}'");
             Debug.Log($"Input Field 1: '{inputField1Content}'");
             Debug.Log($"Connected Element: '{elementInfo.elementName}' (ID: {elementInfo.elementID})");
+            Debug.Log($"Loop Data: {loopSystemData.loops?.Count ?? 0} loops, {loopSystemData.totalCompletedLoops} completed, {loopSystemData.totalLineCount} lines, {loopSystemData.shadedAreaCount} shaded areas");
             Debug.Log($"Next inspection will be: {currentInspectionNumber.ToString(numberFormat)}");
         }
         catch (Exception e)
@@ -538,7 +666,7 @@ public class SimpleTextReader : MonoBehaviour
     
     public void SaveCurrentText()
     {
-        SaveAllTextToJSON();
+        SaveAllTextWithLoopsToJSON();
     }
     
     public void LoadSavedText()
@@ -576,11 +704,14 @@ public class NumberingData
     public string lastUpdated;
 }
 
+/// <summary>
+/// Enhanced data structure that includes loop system information
+/// </summary>
 [System.Serializable]
-public class MultiFieldInspectionData
+public class EnhancedInspectionData
 {
     [Header("Inspection Info")]
-    public string inspectionNumber;        // NEW: Auto-incrementing number (001, 002, etc.)
+    public string inspectionNumber;        // Auto-incrementing number (001, 002, etc.)
     public string inspectionId;            // Unique GUID
     public string timestamp;
     public string captureInfo;
@@ -594,4 +725,74 @@ public class MultiFieldInspectionData
     public string connectedElementName;    // Name of the highlighted GameObject
     public string connectedElementID;      // RevitData ID if available
     public string elementProperties;       // Store key properties as text
+    
+    [Header("Loop System Data")]
+    public LoopSystemData loopSystemData;  // Complete loop system state
+}
+
+/// <summary>
+/// Legacy data structure for backward compatibility
+/// </summary>
+[System.Serializable]
+public class MultiFieldInspectionData
+{
+    [Header("Inspection Info")]
+    public string inspectionNumber;
+    public string inspectionId;
+    public string timestamp;
+    public string captureInfo;
+    
+    [Header("Field Data")]
+    public string textField1;
+    public string textField2;
+    public string inputField1;
+    
+    [Header("Element Connection")]
+    public string connectedElementName;
+    public string connectedElementID;
+    public string elementProperties;
+}
+
+/// <summary>
+/// Complete loop system data structure
+/// </summary>
+[System.Serializable]
+public class LoopSystemData
+{
+    [Header("Loop Information")]
+    public List<LoopData> loops = new List<LoopData>();
+    public int totalCompletedLoops;
+    public int currentLoopDotCount;
+    
+    [Header("Line Information")]
+    public int totalLineCount;
+    public int lineSegmentCount;
+    
+    [Header("Shaded Area Information")]
+    public int shadedAreaCount;
+    
+    [Header("Metadata")]
+    public string captureTimestamp;
+}
+
+/// <summary>
+/// Individual loop data structure
+/// </summary>
+[System.Serializable]
+public class LoopData
+{
+    public int loopIndex;
+    public bool isCompleted;
+    public int dotCount;
+    public Vector3[] positions;
+    
+    [Header("Loop Metadata")]
+    public string loopName;
+    public float totalLength;
+    public float estimatedArea;
+    
+    public LoopData()
+    {
+        positions = new Vector3[0];
+    }
 }

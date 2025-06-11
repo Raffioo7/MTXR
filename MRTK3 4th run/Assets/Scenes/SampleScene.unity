@@ -1080,6 +1080,7 @@ GameObject:
   m_Component:
   - component: {fileID: 451040023}
   - component: {fileID: 451040022}
+  - component: {fileID: 451040024}
   m_Layer: 0
   m_Name: PastInspectionsManager
   m_TagString: Untagged
@@ -1126,6 +1127,24 @@ Transform:
   m_Children: []
   m_Father: {fileID: 517439674}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &451040024
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 451040021}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: e6ba0f996aeb3b945b922fd76f256a3a, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  dotPlacementHandler: {fileID: 1849552044}
+  lineConnectionHandler: {fileID: 1849552046}
+  loopAreaShader: {fileID: 1849552047}
+  dotPlacementDelay: 0.1
+  loopCreationDelay: 0.2
+  debugMode: 1
 --- !u!4 &491395275 stripped
 Transform:
   m_CorrespondingSourceObject: {fileID: 2244185731585867246, guid: cd0f0697f0939504389ec612388f609a, type: 3}
@@ -2168,6 +2187,10 @@ MonoBehaviour:
   saveButtonObject: {fileID: 2091993329}
   loadButtonObject: {fileID: 0}
   propertyHandler: {fileID: 1849552043}
+  dotPlacementHandler: {fileID: 1849552044}
+  lineConnectionHandler: {fileID: 1849552046}
+  loopAreaShader: {fileID: 1849552047}
+  loopSystemLoader: {fileID: 451040024}
   fileToLoad: 
   defaultTextField1Text: Choose Damage Type
   defaultTextField2Text: Choose Inspection Type
@@ -6795,6 +6818,11 @@ MonoBehaviour:
           m_BoolArgument: 0
         m_CallState: 2
   inspectionLoader: {fileID: 451040022}
+  dotManagementExtension: {fileID: 1849552045}
+  textReader: {fileID: 699511633}
+  clearLoopsOnClose: 1
+  saveInspectionOnClose: 1
+  saveOnlyIfContentExists: 1
 --- !u!1 &1832203411
 GameObject:
   m_ObjectHideFlags: 0
