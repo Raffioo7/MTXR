@@ -9,6 +9,7 @@ using System.Collections.Generic;
 
 /// <summary>
 /// Simple inspection loader with three fixed buttons for the last three inspections
+/// Now filters by currently highlighted element
 /// </summary>
 public class SimpleInspectionLoader : MonoBehaviour
 {
@@ -32,12 +33,18 @@ public class SimpleInspectionLoader : MonoBehaviour
     [Tooltip("Reference to your SimpleTextReader script")]
     public SimpleTextReader textReader;
     
+    [Tooltip("Reference to your PropertyClickHandler_MRTK3 script")]
+    public PropertyClickHandler_MRTK3 propertyClickHandler;
+    
     [Header("Settings")]
     [Tooltip("Auto-refresh when panel opens")]
     public bool autoRefreshOnOpen = true;
     
     [Tooltip("Show newest first")]
     public bool newestFirst = true;
+    
+    [Tooltip("Enable debug logging")]
+    public bool debugMode = true;
     
     [Header("Display Settings")]
     [Tooltip("Date format for button display")]
@@ -57,12 +64,17 @@ public class SimpleInspectionLoader : MonoBehaviour
     
     private InspectionFileInfo[] lastThreeInspections;
     private bool isPanelVisible = false;
+    private string currentHighlightedElementName = "";
     
     void Start()
     {
         // Find SimpleTextReader if not assigned
         if (textReader == null)
             textReader = FindObjectOfType<SimpleTextReader>();
+        
+        // Find PropertyClickHandler if not assigned
+        if (propertyClickHandler == null)
+            propertyClickHandler = FindObjectOfType<PropertyClickHandler_MRTK3>();
         
         // Hide panel initially
         if (inspectionPanel != null)
@@ -71,8 +83,122 @@ public class SimpleInspectionLoader : MonoBehaviour
         // Setup buttons
         SetupButtons();
         
-        // Load initial data
+        // Load initial data (will show "No element selected" state)
         RefreshInspections();
+    }
+    
+    void Update()
+    {
+        // Check if highlighted element has changed
+        string newHighlightedElement = GetCurrentHighlightedElementName();
+        
+        if (newHighlightedElement != currentHighlightedElementName)
+        {
+            if (debugMode)
+            {
+                Debug.Log($"=== ELEMENT SELECTION CHANGED ===");
+                Debug.Log($"Previous: '{currentHighlightedElementName}'");
+                Debug.Log($"New: '{newHighlightedElement}'");
+            }
+            
+            currentHighlightedElementName = newHighlightedElement;
+            
+            // Refresh inspections for the new element
+            RefreshInspections();
+        }
+    }
+    
+    /// <summary>
+    /// Gets the name of the currently highlighted element from PropertyClickHandler
+    /// </summary>
+    string GetCurrentHighlightedElementName()
+    {
+        if (propertyClickHandler == null)
+            return "";
+        
+        // Get the currently selected object from PropertyClickHandler
+        GameObject currentlySelected = GetCurrentlySelectedObject();
+        
+        if (currentlySelected == null)
+            return "";
+        
+        // Get the RevitData component to find the element name
+        RevitData revitData = currentlySelected.GetComponent<RevitData>();
+        if (revitData != null)
+        {
+            // Try to get a meaningful element name from RevitData
+            // You might need to adjust this based on your RevitData structure
+            string elementName = GetElementNameFromRevitData(revitData);
+            return elementName;
+        }
+        
+        // Fallback to GameObject name
+        return currentlySelected.name;
+    }
+    
+    /// <summary>
+    /// Uses reflection to get the currently selected object from PropertyClickHandler
+    /// </summary>
+    GameObject GetCurrentlySelectedObject()
+    {
+        if (propertyClickHandler == null)
+            return null;
+        
+        // Use reflection to access the private currentlySelected field
+        var field = typeof(PropertyClickHandler_MRTK3).GetField("currentlySelected", 
+            System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+        
+        if (field != null)
+        {
+            return field.GetValue(propertyClickHandler) as GameObject;
+        }
+        
+        return null;
+    }
+    
+    /// <summary>
+    /// Extracts a meaningful element name from RevitData
+    /// Adjust this method based on your RevitData properties
+    /// </summary>
+    string GetElementNameFromRevitData(RevitData revitData)
+    {
+        // Try to get element name from various possible properties
+        // You'll need to adjust these based on your actual RevitData structure
+        
+        // Method 1: Try to get from display properties
+        var displayProperties = revitData.GetDisplayProperties(revitData.gameObject);
+        
+        if (debugMode)
+        {
+            Debug.Log("=== DEBUGGING ELEMENT NAME EXTRACTION ===");
+            Debug.Log($"GameObject: {revitData.gameObject.name}");
+            Debug.Log($"Found {displayProperties.Count} display properties:");
+            foreach (var prop in displayProperties)
+            {
+                Debug.Log($"  - {prop.key}: '{prop.value}'");
+            }
+        }
+        
+        // Look for common element identifier properties
+        foreach (var prop in displayProperties)
+        {
+            if (prop.key.ToLower().Contains("name") || 
+                prop.key.ToLower().Contains("element") ||
+                prop.key.ToLower().Contains("id"))
+            {
+                if (!string.IsNullOrEmpty(prop.value) && prop.value != "null")
+                {
+                    if (debugMode)
+                        Debug.Log($"Selected element name from property '{prop.key}': '{prop.value}'");
+                    return prop.value;
+                }
+            }
+        }
+        
+        // Method 2: Fallback to GameObject name
+        if (debugMode)
+            Debug.Log($"Using GameObject name as fallback: '{revitData.gameObject.name}'");
+        return revitData.gameObject.name;
     }
     
     void SetupButtons()
@@ -135,23 +261,32 @@ public class SimpleInspectionLoader : MonoBehaviour
     
     public void RefreshInspections()
     {
-        Debug.Log("Refreshing last three inspections...");
+        Debug.Log($"Refreshing inspections for element: {currentHighlightedElementName}");
         
-        // Get all inspection files
-        lastThreeInspections = GetLastThreeInspections();
+        // Get inspections for the currently highlighted element
+        lastThreeInspections = GetLastThreeInspectionsForElement(currentHighlightedElementName);
         
         // Update button displays
         UpdateButtonDisplays();
         
-        Debug.Log($"Loaded {lastThreeInspections.Length} recent inspections");
+        Debug.Log($"Loaded {lastThreeInspections.Length} recent inspections for {currentHighlightedElementName}");
     }
     
-    InspectionFileInfo[] GetLastThreeInspections()
+    InspectionFileInfo[] GetLastThreeInspectionsForElement(string elementName)
     {
+        if (debugMode)
+        {
+            Debug.Log("=== DEBUGGING INSPECTION FILTERING ===");
+            Debug.Log($"Looking for inspections for element: '{elementName}'");
+        }
+        
         try
         {
             string basePath = Application.persistentDataPath;
             string[] files = Directory.GetFiles(basePath, "bridge_inspection_*.json");
+            
+            if (debugMode)
+                Debug.Log($"Found {files.Length} inspection files in total");
             
             var fileInfos = new List<InspectionFileInfo>();
             
@@ -176,6 +311,14 @@ public class SimpleInspectionLoader : MonoBehaviour
                         fileInfo.connectedElement = inspectionData.connectedElementName ?? "No element";
                         fileInfo.inspectionId = inspectionData.inspectionId;
                         
+                        if (debugMode)
+                        {
+                            Debug.Log($"File: {fileInfo.fileName}");
+                            Debug.Log($"  Connected Element: '{fileInfo.connectedElement}'");
+                            Debug.Log($"  Timestamp: {fileInfo.timestamp}");
+                            Debug.Log($"  Inspection ID: {fileInfo.inspectionId}");
+                        }
+                        
                         // Create summary of content
                         var contentParts = new List<string>();
                         if (!string.IsNullOrEmpty(inspectionData.textField1)) contentParts.Add("Text1");
@@ -183,15 +326,60 @@ public class SimpleInspectionLoader : MonoBehaviour
                         if (!string.IsNullOrEmpty(inspectionData.inputField1)) contentParts.Add("Input1");
                         
                         fileInfo.contentSummary = contentParts.Count > 0 ? string.Join(", ", contentParts) : "Empty";
+                        
+                        // FILTER: Only include inspections for the specified element
+                        if (string.IsNullOrEmpty(elementName))
+                        {
+                            if (debugMode)
+                                Debug.Log($"  SKIPPED: No element name provided");
+                            continue;
+                        }
+                        
+                        // Try different matching strategies
+                        bool isMatch = false;
+                        
+                        // Strategy 1: Exact match (case insensitive)
+                        if (fileInfo.connectedElement.Equals(elementName, StringComparison.OrdinalIgnoreCase))
+                        {
+                            isMatch = true;
+                            if (debugMode)
+                                Debug.Log($"  MATCHED: Exact match");
+                        }
+                        // Strategy 2: Contains match (in case of partial names)
+                        else if (fileInfo.connectedElement.ToLower().Contains(elementName.ToLower()) ||
+                                elementName.ToLower().Contains(fileInfo.connectedElement.ToLower()))
+                        {
+                            isMatch = true;
+                            if (debugMode)
+                                Debug.Log($"  MATCHED: Contains match");
+                        }
+                        
+                        if (isMatch)
+                        {
+                            fileInfos.Add(fileInfo);
+                            if (debugMode)
+                                Debug.Log($"  ADDED to results");
+                        }
+                        else
+                        {
+                            if (debugMode)
+                                Debug.Log($"  SKIPPED: No match ('{fileInfo.connectedElement}' != '{elementName}')");
+                        }
                     }
-                    
-                    fileInfos.Add(fileInfo);
+                    else
+                    {
+                        if (debugMode)
+                            Debug.LogWarning($"Could not parse JSON in file {Path.GetFileName(filePath)}");
+                    }
                 }
                 catch (Exception e)
                 {
                     Debug.LogWarning($"Could not read inspection file {Path.GetFileName(filePath)}: {e.Message}");
                 }
             }
+            
+            if (debugMode)
+                Debug.Log($"Found {fileInfos.Count} matching inspections for element '{elementName}'");
             
             // Sort by creation time and take the last 3
             if (newestFirst)
@@ -264,8 +452,10 @@ public class SimpleInspectionLoader : MonoBehaviour
             }
             else
             {
-                // No inspection available
-                string noInspectionText = "No Inspection";
+                // No inspection available for this element
+                string noInspectionText = string.IsNullOrEmpty(currentHighlightedElementName) 
+                    ? "Select Element" 
+                    : "No Inspections";
                 
                 if (textComponent3D != null)
                 {
@@ -512,6 +702,14 @@ public class SimpleInspectionLoader : MonoBehaviour
     public bool HasInspectionAt(int index)
     {
         return index >= 0 && index < lastThreeInspections.Length;
+    }
+    
+    /// <summary>
+    /// Get the currently highlighted element name (for debugging)
+    /// </summary>
+    public string GetCurrentElementName()
+    {
+        return currentHighlightedElementName;
     }
 }
 

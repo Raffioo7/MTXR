@@ -1105,8 +1105,10 @@ MonoBehaviour:
   button3: {fileID: 1510957585}
   togglePanelButton: {fileID: 0}
   textReader: {fileID: 699511633}
+  propertyClickHandler: {fileID: 1849552043}
   autoRefreshOnOpen: 1
   newestFirst: 1
+  debugMode: 0
   dateFormat: 0
   preferInspectionId: 0
 --- !u!4 &451040023
@@ -7441,6 +7443,7 @@ MonoBehaviour:
   thirdButton: {fileID: 2091993329}
   highlightDependentObject: {fileID: 517439673}
   thirdButtonPanel: {fileID: 1134324148}
+  inspectionLoader: {fileID: 451040022}
   clickableLayerMask:
     serializedVersion: 2
     m_Bits: 1

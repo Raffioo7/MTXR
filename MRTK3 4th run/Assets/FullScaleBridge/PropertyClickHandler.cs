@@ -17,6 +17,9 @@ public class PropertyClickHandler_MRTK3 : MonoBehaviour
     public GameObject highlightDependentObject; // NEW: GameObject that's active only when something is highlighted
     public GameObject thirdButtonPanel; // NEW: Panel that controls third button visibility
     
+    [Header("Connected Systems")]
+    public SimpleInspectionLoader inspectionLoader; // Reference to inspection loader
+    
     [Header("Settings")]
     public LayerMask clickableLayerMask = -1; // All layers
     
@@ -36,7 +39,9 @@ public class PropertyClickHandler_MRTK3 : MonoBehaviour
     
     void Start()
     {
-        // No need to find DotPlacementHandler anymore
+        // Find SimpleInspectionLoader if not assigned
+        if (inspectionLoader == null)
+            inspectionLoader = FindObjectOfType<SimpleInspectionLoader>();
         
         // Hide panel initially
         if (propertyPanel != null)
@@ -94,6 +99,12 @@ public class PropertyClickHandler_MRTK3 : MonoBehaviour
     private bool IsAnythingHighlighted()
     {
         return currentlySelected != null;
+    }
+    
+    // Public method to get currently selected object (for inspection loader)
+    public GameObject GetCurrentlySelected()
+    {
+        return currentlySelected;
     }
     
     // NEW: Method to update third button visibility based on its panel
@@ -472,12 +483,16 @@ public class PropertyClickHandler_MRTK3 : MonoBehaviour
         currentlySelected = clickedObject;
         HighlightObject(clickedObject);
         ShowProperties(data, clickedObject);
-        ShowUnhighlightButton(); // Show the button when an object is selected
-        ShowSecondButton(); // Show the second button when an object is selected
-        // Third button visibility is controlled by thirdButtonPanel in Update()
+        ShowUnhighlightButton();
+        ShowSecondButton();
         
         // NEW: Update highlight-dependent object visibility
         UpdateHighlightDependentObject();
+        
+        // NEW: Notify inspection loader that element selection changed
+        // The inspection loader will automatically detect this change in its Update method
+        if (debugMode)
+            Debug.Log($"Element selected: {clickedObject.name} - inspection loader will update automatically");
     }
     
     void HighlightObject(GameObject obj)
@@ -547,6 +562,11 @@ public class PropertyClickHandler_MRTK3 : MonoBehaviour
         
         // NEW: Update highlight-dependent object visibility
         UpdateHighlightDependentObject();
+        
+        // NEW: Notify inspection loader that selection was cleared
+        // The inspection loader will automatically detect this change in its Update method
+        if (debugMode)
+            Debug.Log("Selection cleared - inspection loader will update automatically");
     }
     
     void ShowProperties(RevitData data, GameObject clickedObject)
