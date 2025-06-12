@@ -310,6 +310,9 @@ public class SimpleTextReader : MonoBehaviour
     public void SaveAllTextWithLoopsToJSON()
     {
         Debug.Log("=== CAPTURING ALL TEXT FIELDS AND LOOP SYSTEM ===");
+        Debug.Log($"=== SAVE CALLED - Time: {Time.time}, Frame: {Time.frameCount}, Stack Trace: ===");
+        Debug.Log(System.Environment.StackTrace);
+        Debug.Log("=== END STACK TRACE ===");
         
         string text1 = textField1 != null ? (textField1.text ?? "") : "";
         string text2 = textField2 != null ? (textField2.text ?? "") : "";

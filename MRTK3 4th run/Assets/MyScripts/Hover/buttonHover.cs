@@ -59,7 +59,6 @@ namespace MixedReality.Toolkit.UX
             {
                 Interactable.hoverEntered.AddListener(OnHoverEntered);
                 Interactable.hoverExited.AddListener(OnHoverExited);
-                Debug.Log("Hand ray hover events enabled");
             }
         }
         
@@ -76,19 +75,10 @@ namespace MixedReality.Toolkit.UX
         {
             if (enableHandRayHover)
             {
-                // Debug what's triggering this
-                Debug.Log($"Hover triggered by: {args.interactorObject.GetType().Name}");
-                Debug.Log($"Interactor transform: {args.interactorObject.transform.name}");
-                
                 // Filter for hand rays only if enabled
                 if (!filterHandRayOnly || IsHandRayInteractor(args.interactorObject))
                 {
                     ShowHoverText();
-                    Debug.Log($"Hand ray hover entered - showing text: {hoverMessage}");
-                }
-                else
-                {
-                    Debug.Log($"Non-hand interactor filtered out: {args.interactorObject.GetType().Name}");
                 }
             }
         }
@@ -100,7 +90,6 @@ namespace MixedReality.Toolkit.UX
                 if (!filterHandRayOnly || IsHandRayInteractor(args.interactorObject))
                 {
                     HideHoverText();
-                    Debug.Log("Hand ray hover exited - hiding text");
                 }
             }
         }
@@ -121,8 +110,6 @@ namespace MixedReality.Toolkit.UX
                                   interactorName.Contains("gaze") ||
                                   transformName.Contains("eye") ||
                                   transformName.Contains("gaze");
-            
-            Debug.Log($"Interactor check - Name: {interactorName}, Transform: {transformName}, IsHand: {isHandInteractor}, IsEye: {isEyeInteractor}");
             
             return isHandInteractor && !isEyeInteractor;
         }
@@ -165,8 +152,6 @@ namespace MixedReality.Toolkit.UX
                     }
                     HideHoverText();
                 }
-                
-                Debug.Log($"Hand ray hover {(enabled ? "enabled" : "disabled")}");
             }
         }
         

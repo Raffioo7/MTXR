@@ -129,31 +129,6 @@ Transform:
   m_CorrespondingSourceObject: {fileID: 2244185731585867246, guid: cd0f0697f0939504389ec612388f609a, type: 3}
   m_PrefabInstance: {fileID: 1231069912}
   m_PrefabAsset: {fileID: 0}
---- !u!114 &7108981 stripped
-MonoBehaviour:
-  m_CorrespondingSourceObject: {fileID: 1503546110793399400, guid: cd0f0697f0939504389ec612388f609a, type: 3}
-  m_PrefabInstance: {fileID: 1231069912}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 7108976}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: c32e8a7644144f8419bb881ad588ed0e, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
---- !u!114 &7108990
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 7108976}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 9111526479378224bb840ed40fe8086b, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  mrtkButton: {fileID: 7108981}
-  panel: {fileID: 1781522847}
 --- !u!114 &7108999
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -181,17 +156,6 @@ Transform:
   m_CorrespondingSourceObject: {fileID: 2244185731585867246, guid: cd0f0697f0939504389ec612388f609a, type: 3}
   m_PrefabInstance: {fileID: 1504900752}
   m_PrefabAsset: {fileID: 0}
---- !u!114 &15705195 stripped
-MonoBehaviour:
-  m_CorrespondingSourceObject: {fileID: 1503546110793399400, guid: cd0f0697f0939504389ec612388f609a, type: 3}
-  m_PrefabInstance: {fileID: 1504900752}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 15705193}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: c32e8a7644144f8419bb881ad588ed0e, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
 --- !u!114 &15705204
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -4989,9 +4953,6 @@ PrefabInstance:
     m_AddedComponents:
     - targetCorrespondingSourceObject: {fileID: 2244185731031694095, guid: cd0f0697f0939504389ec612388f609a, type: 3}
       insertIndex: -1
-      addedObject: {fileID: 7108990}
-    - targetCorrespondingSourceObject: {fileID: 2244185731031694095, guid: cd0f0697f0939504389ec612388f609a, type: 3}
-      insertIndex: -1
       addedObject: {fileID: 7108999}
     - targetCorrespondingSourceObject: {fileID: 4659777866328155393, guid: cd0f0697f0939504389ec612388f609a, type: 3}
       insertIndex: -1
@@ -7048,7 +7009,6 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 1781522848}
-  - component: {fileID: 1781522849}
   m_Layer: 0
   m_Name: Empty (TilePanel)
   m_TagString: Untagged
@@ -7077,20 +7037,6 @@ RectTransform:
   m_AnchoredPosition: {x: -0.01000002, y: 0.059999943}
   m_SizeDelta: {x: 100, y: 100}
   m_Pivot: {x: 0.5, y: 0.5}
---- !u!114 &1781522849
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1781522847}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 9111526479378224bb840ed40fe8086b, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  mrtkButton: {fileID: 15705195}
-  panel: {fileID: 1781522847}
 --- !u!1 &1788842163
 GameObject:
   m_ObjectHideFlags: 0
@@ -7385,10 +7331,10 @@ MonoBehaviour:
   dotManagementExtension: {fileID: 1849552045}
   textReader: {fileID: 699511633}
   clearLoopsOnClose: 1
-  saveInspectionOnClose: 1
-  saveOnlyIfContentExists: 1
+  saveInspectionOnClose: 0
+  saveOnlyIfContentExists: 0
   clearLoopsOnToggle: 1
-  saveInspectionOnToggle: 1
+  saveInspectionOnToggle: 0
 --- !u!1 &1832203411
 GameObject:
   m_ObjectHideFlags: 0
@@ -8057,6 +8003,8 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   dotPlacementButton: {fileID: 7108976}
+  dotPlacementButton2: {fileID: 15705193}
+  panel: {fileID: 1781522847}
   dotPrefab: {fileID: 0}
   dotColor: {r: 0.11764707, g: 0.14117648, b: 0.35686275, a: 1}
   firstDotColor: {r: 0.38823533, g: 0.5647059, b: 0.8117648, a: 1}

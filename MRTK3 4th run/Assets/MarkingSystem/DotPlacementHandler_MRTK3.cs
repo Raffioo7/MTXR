@@ -8,9 +8,16 @@ using System.Linq;
 
 public class DotPlacementHandler_MRTK3 : MonoBehaviour
 {
-    [Header("MRTK3 Button")]
-    [Tooltip("The MRTK3 button that will toggle dot placement mode")]
+    [Header("MRTK3 Buttons")]
+    [Tooltip("The first MRTK3 button that will toggle dot placement mode and panel")]
     public GameObject dotPlacementButton;
+    
+    [Tooltip("The second MRTK3 button that will toggle dot placement mode and panel")]
+    public GameObject dotPlacementButton2;
+    
+    [Header("Panel")]
+    [Tooltip("Panel to toggle when buttons are clicked")]
+    public GameObject panel;
     
     [Header("Dot Settings")]
     [Tooltip("Prefab for the dot marker")]
@@ -95,14 +102,20 @@ public class DotPlacementHandler_MRTK3 : MonoBehaviour
         previousDotSize = dotSize;
         previousFirstDotSizeMultiplier = firstDotSizeMultiplier;
         
-        // Hook into the button's functionality
-        SetupDotPlacementButton();
+        // Hook into the buttons' functionality
+        SetupDotPlacementButtons();
         
         // Setup hand interactions for all RevitData objects
         SetupHandInteractions();
         
         // Initialize hand ray components cache
         UpdateHandRayComponentsCache();
+        
+        // Initialize panel state (start hidden)
+        if (panel != null)
+        {
+            panel.SetActive(false);
+        }
     }
     
     void UpdateHandRayComponentsCache()
@@ -738,16 +751,33 @@ public class DotPlacementHandler_MRTK3 : MonoBehaviour
         dotPrefab.SetActive(false);
     }
     
-    void SetupDotPlacementButton()
+    void SetupDotPlacementButtons()
     {
-        if (dotPlacementButton == null)
+        // Setup first button
+        if (dotPlacementButton != null)
         {
-            Debug.LogWarning("DotPlacementHandler: No dot placement button assigned!");
-            return;
+            SetupSingleButton(dotPlacementButton, "first");
+        }
+        else
+        {
+            Debug.LogWarning("DotPlacementHandler: No first dot placement button assigned!");
         }
         
+        // Setup second button
+        if (dotPlacementButton2 != null)
+        {
+            SetupSingleButton(dotPlacementButton2, "second");
+        }
+        else if (debugMode)
+        {
+            Debug.Log("DotPlacementHandler: No second dot placement button assigned (this is optional)");
+        }
+    }
+    
+    void SetupSingleButton(GameObject button, string buttonName)
+    {
         // Get the MRTK3 StatefulInteractable component
-        Component buttonInteractable = dotPlacementButton.GetComponent("StatefulInteractable");
+        Component buttonInteractable = button.GetComponent("StatefulInteractable");
         if (buttonInteractable != null)
         {
             bool subscribed = TrySubscribeToButtonClick(buttonInteractable);
@@ -755,14 +785,14 @@ public class DotPlacementHandler_MRTK3 : MonoBehaviour
             if (debugMode)
             {
                 if (subscribed)
-                    Debug.Log("DotPlacementHandler: Successfully set up dot placement button");
+                    Debug.Log($"DotPlacementHandler: Successfully set up {buttonName} dot placement button");
                 else
-                    Debug.LogWarning("DotPlacementHandler: Failed to set up dot placement button");
+                    Debug.LogWarning($"DotPlacementHandler: Failed to set up {buttonName} dot placement button");
             }
         }
         else if (debugMode)
         {
-            Debug.LogWarning("DotPlacementHandler: No StatefulInteractable found on dot placement button");
+            Debug.LogWarning($"DotPlacementHandler: No StatefulInteractable found on {buttonName} dot placement button");
         }
     }
     
@@ -779,7 +809,7 @@ public class DotPlacementHandler_MRTK3 : MonoBehaviour
                 var eventValue = fieldInfo.GetValue(interactable) as UnityEngine.Events.UnityEvent;
                 if (eventValue != null)
                 {
-                    eventValue.AddListener(ToggleDotPlacementMode);
+                    eventValue.AddListener(ToggleDotPlacementModeAndPanel);
                     return true;
                 }
             }
@@ -790,7 +820,7 @@ public class DotPlacementHandler_MRTK3 : MonoBehaviour
                 var eventValue = propertyInfo.GetValue(interactable) as UnityEngine.Events.UnityEvent;
                 if (eventValue != null)
                 {
-                    eventValue.AddListener(ToggleDotPlacementMode);
+                    eventValue.AddListener(ToggleDotPlacementModeAndPanel);
                     return true;
                 }
             }
@@ -799,6 +829,25 @@ public class DotPlacementHandler_MRTK3 : MonoBehaviour
         return false;
     }
     
+    public void ToggleDotPlacementModeAndPanel()
+    {
+        // Toggle dot placement mode
+        isPlacementModeActive = !isPlacementModeActive;
+        
+        // Toggle panel
+        if (panel != null)
+        {
+            panel.SetActive(!panel.activeSelf);
+        }
+        
+        if (debugMode)
+            Debug.Log($"DotPlacementHandler: Dot placement mode is now {(isPlacementModeActive ? "ACTIVE" : "INACTIVE")}, Panel is now {(panel != null && panel.activeSelf ? "VISIBLE" : "HIDDEN")}");
+        
+        // Update button visual feedback if needed
+        UpdateButtonVisualFeedback();
+    }
+    
+    // Keep the old method for backward compatibility
     public void ToggleDotPlacementMode()
     {
         isPlacementModeActive = !isPlacementModeActive;
@@ -812,28 +861,29 @@ public class DotPlacementHandler_MRTK3 : MonoBehaviour
     
     void UpdateButtonVisualFeedback()
     {
-        // Optional: Change button appearance to indicate active mode
-        if (dotPlacementButton != null)
+        // Update first button
+        UpdateSingleButtonVisualFeedback(dotPlacementButton);
+        
+        // Update second button
+        UpdateSingleButtonVisualFeedback(dotPlacementButton2);
+    }
+    
+    void UpdateSingleButtonVisualFeedback(GameObject button)
+    {
+        if (button != null)
         {
-            // You can add visual feedback here, like changing button color
-            // For example, if using MRTK3 button visuals
-            Renderer buttonRenderer = dotPlacementButton.GetComponentInChildren<Renderer>();
-            if (buttonRenderer != null)
+            Renderer buttonRenderer = button.GetComponentInChildren<Renderer>();
+            if (buttonRenderer != null && buttonRenderer.material != null)
             {
-                // Store original color if not stored
-                if (!buttonRenderer.material.HasProperty("_OriginalColor"))
+                // Check if the material has a _Color property before trying to set it
+                if (buttonRenderer.material.HasProperty("_Color"))
                 {
-                    buttonRenderer.material.SetColor("_OriginalColor", buttonRenderer.material.color);
+                    buttonRenderer.material.color = isPlacementModeActive ? Color.green : Color.white;
                 }
-                
-                // Change color based on mode
-                if (isPlacementModeActive)
+                // Alternative: Try different property names that MRTK materials might use
+                else if (buttonRenderer.material.HasProperty("_BaseColor"))
                 {
-                    buttonRenderer.material.color = Color.green; // Active mode color
-                }
-                else
-                {
-                    buttonRenderer.material.color = buttonRenderer.material.GetColor("_OriginalColor");
+                    buttonRenderer.material.SetColor("_BaseColor", isPlacementModeActive ? Color.green : Color.white);
                 }
             }
         }
@@ -853,9 +903,16 @@ public class DotPlacementHandler_MRTK3 : MonoBehaviour
             if (isPlacementModeActive)
             {
                 isPlacementModeActive = false;
+                
+                // Also hide panel when exiting with escape
+                if (panel != null)
+                {
+                    panel.SetActive(false);
+                }
+                
                 UpdateButtonVisualFeedback();
                 if (debugMode)
-                    Debug.Log("DotPlacementHandler: Exited dot placement mode");
+                    Debug.Log("DotPlacementHandler: Exited dot placement mode and hid panel");
             }
         }
     }
@@ -1180,13 +1237,22 @@ public class DotPlacementHandler_MRTK3 : MonoBehaviour
         if (dotPrefab != null && dotPrefab.name == "DotPrefab")
             Destroy(dotPrefab);
         
-        // Remove button listener if it exists
+        // Remove button listeners if they exist
         if (dotPlacementButton != null)
         {
             Component buttonInteractable = dotPlacementButton.GetComponent("StatefulInteractable");
             if (buttonInteractable != null)
             {
                 UnsubscribeFromButtonClickEvent(buttonInteractable);
+            }
+        }
+        
+        if (dotPlacementButton2 != null)
+        {
+            Component buttonInteractable2 = dotPlacementButton2.GetComponent("StatefulInteractable");
+            if (buttonInteractable2 != null)
+            {
+                UnsubscribeFromButtonClickEvent(buttonInteractable2);
             }
         }
         
@@ -1208,7 +1274,7 @@ public class DotPlacementHandler_MRTK3 : MonoBehaviour
                 var eventValue = fieldInfo.GetValue(interactable) as UnityEngine.Events.UnityEvent;
                 if (eventValue != null)
                 {
-                    eventValue.RemoveListener(ToggleDotPlacementMode);
+                    eventValue.RemoveListener(ToggleDotPlacementModeAndPanel);
                     return;
                 }
             }
@@ -1220,7 +1286,7 @@ public class DotPlacementHandler_MRTK3 : MonoBehaviour
                 var eventValue = propertyInfo.GetValue(interactable) as UnityEngine.Events.UnityEvent;
                 if (eventValue != null)
                 {
-                    eventValue.RemoveListener(ToggleDotPlacementMode);
+                    eventValue.RemoveListener(ToggleDotPlacementModeAndPanel);
                     return;
                 }
             }
