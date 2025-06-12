@@ -140,7 +140,7 @@ public class LoopSystemLoader : MonoBehaviour
     }
     
     /// <summary>
-    /// Restore a single loop from saved data
+    /// Restore a single loop from saved data - FIXED FOR FIRST LOOP ISSUE
     /// </summary>
     IEnumerator RestoreSingleLoop(LoopData loopData, int loopIndex)
     {
@@ -150,34 +150,199 @@ public class LoopSystemLoader : MonoBehaviour
             yield break;
         }
         
-        // Place dots at each saved position
+        if (debugMode)
+        {
+            Debug.Log($"=== RESTORING LOOP {loopIndex + 1} ===");
+            Debug.Log($"Expected dots: {loopData.dotCount}");
+            Debug.Log($"Position data count: {loopData.positions.Length}");
+            Debug.Log($"Is completed: {loopData.isCompleted}");
+        }
+        
+        // SPECIAL HANDLING FOR FIRST LOOP (loopIndex == 0)
+        if (loopIndex == 0)
+        {
+            // Give extra time for system initialization on first loop
+            yield return new WaitForSeconds(dotPlacementDelay * 2);
+            
+            if (debugMode)
+                Debug.Log("First loop detected - using enhanced restoration logic");
+        }
+        
+        // Place all dots first
         for (int dotIndex = 0; dotIndex < loopData.positions.Length; dotIndex++)
         {
             Vector3 position = loopData.positions[dotIndex];
-            
-            // Calculate a surface normal (you might want to improve this based on your needs)
             Vector3 normal = Vector3.up;
             
-            // Place the dot using the dot placement handler's method
             PlaceDotAtPosition(position, normal);
             
             if (debugMode)
-                Debug.Log($"Placed dot {dotIndex + 1} at {position} for loop {loopIndex + 1}");
+                Debug.Log($"Placed dot {dotIndex + 1}/{loopData.positions.Length} at {position} for loop {loopIndex + 1}");
             
-            // Wait between dot placements
-            yield return new WaitForSeconds(dotPlacementDelay);
+            // Extra delay for first loop dots to ensure proper processing
+            float delayTime = (loopIndex == 0) ? dotPlacementDelay * 1.5f : dotPlacementDelay;
+            yield return new WaitForSeconds(delayTime);
         }
         
         // If this was a completed loop, close it
         if (loopData.isCompleted && loopData.positions.Length >= 3)
         {
-            yield return new WaitForSeconds(dotPlacementDelay);
-            
-            // Force close the current loop
-            ForceCloseCurrentLoop();
+            // Extra delay before closing, especially for first loop
+            float preCloseDelay = (loopIndex == 0) ? dotPlacementDelay * 3 : dotPlacementDelay;
+            yield return new WaitForSeconds(preCloseDelay);
             
             if (debugMode)
-                Debug.Log($"Closed loop {loopIndex + 1}");
+            {
+                int currentDots = dotPlacementHandler.GetCurrentLoopDotCount();
+                Debug.Log($"Before closing - Current loop dot count: {currentDots}");
+                
+                // For first loop, do extra validation
+                if (loopIndex == 0 && currentDots != loopData.dotCount)
+                {
+                    Debug.LogWarning($"FIRST LOOP DOT COUNT MISMATCH before closing! Expected: {loopData.dotCount}, Got: {currentDots}");
+                }
+            }
+            
+            // Use different closing strategy for first loop
+            if (loopIndex == 0)
+            {
+                ForceCloseFirstLoopSafely(loopData);
+            }
+            else
+            {
+                ForceCloseCurrentLoopSafely();
+            }
+            
+            if (debugMode)
+            {
+                Debug.Log($"After closing - Completed loops: {dotPlacementHandler.GetCompletedLoopCount()}");
+                Debug.Log($"After closing - Current loop dots: {dotPlacementHandler.GetCurrentLoopDotCount()}");
+                
+                // Validate first loop closure
+                if (loopIndex == 0)
+                {
+                    var allLoopsAfter = dotPlacementHandler.GetAllLoopPositions();
+                    if (allLoopsAfter.Count > 0)
+                    {
+                        var firstLoop = allLoopsAfter[0];
+                        if (firstLoop.Count != loopData.dotCount)
+                        {
+                            Debug.LogError($"FIRST LOOP FINAL COUNT MISMATCH! Expected: {loopData.dotCount}, Got: {firstLoop.Count}");
+                        }
+                        else
+                        {
+                            Debug.Log($"First loop successfully restored with {firstLoop.Count} dots");
+                        }
+                    }
+                }
+            }
+        }
+        else if (debugMode)
+        {
+            Debug.Log($"Loop {loopIndex + 1} left open (not completed or insufficient dots)");
+        }
+    }
+    
+    /// <summary>
+    /// Special handling for closing the first loop with additional safety measures
+    /// </summary>
+    void ForceCloseFirstLoopSafely(LoopData originalLoopData)
+    {
+        if (dotPlacementHandler == null) return;
+        
+        if (debugMode)
+            Debug.Log("Using special first loop closure logic");
+        
+        // Check if we have the expected number of dots before closing
+        int currentDots = dotPlacementHandler.GetCurrentLoopDotCount();
+        if (currentDots != originalLoopData.dotCount)
+        {
+            Debug.LogWarning($"First loop dot count mismatch before closure. Expected: {originalLoopData.dotCount}, Current: {currentDots}");
+            
+            // Try to fix by adding missing dots
+            if (currentDots < originalLoopData.dotCount)
+            {
+                int missingDots = originalLoopData.dotCount - currentDots;
+                Debug.LogWarning($"Attempting to add {missingDots} missing dots to first loop");
+                
+                // Add the missing dots from the end of the positions array
+                for (int i = currentDots; i < originalLoopData.dotCount && i < originalLoopData.positions.Length; i++)
+                {
+                    PlaceDotAtPosition(originalLoopData.positions[i], Vector3.up);
+                    if (debugMode)
+                        Debug.Log($"Added missing dot {i + 1} at {originalLoopData.positions[i]}");
+                }
+            }
+        }
+        
+        // Now close the loop
+        ForceCloseCurrentLoopSafely();
+    }
+    
+    /// <summary>
+    /// Force close the current loop with additional safety checks
+    /// </summary>
+    void ForceCloseCurrentLoopSafely()
+    {
+        if (dotPlacementHandler == null) return;
+        
+        // Check if we have enough dots before closing
+        int currentDots = dotPlacementHandler.GetCurrentLoopDotCount();
+        if (currentDots < 3)
+        {
+            if (debugMode)
+                Debug.LogWarning($"Cannot close loop - only {currentDots} dots, need at least 3");
+            return;
+        }
+        
+        try
+        {
+            // Store the current loop positions before closing (for debugging)
+            List<Vector3> positionsBeforeClosing = new List<Vector3>();
+            if (debugMode)
+            {
+                var allLoops = dotPlacementHandler.GetAllLoopPositions();
+                if (allLoops.Count > 0)
+                {
+                    var currentLoop = allLoops[allLoops.Count - 1];
+                    positionsBeforeClosing.AddRange(currentLoop);
+                }
+            }
+            
+            // Use reflection to call the private CloseCurrentLoop method
+            var method = typeof(DotPlacementHandler_MRTK3).GetMethod("CloseCurrentLoop", 
+                System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+            
+            if (method != null)
+            {
+                method.Invoke(dotPlacementHandler, null);
+                
+                if (debugMode)
+                {
+                    Debug.Log($"Successfully closed loop with {currentDots} dots");
+                    
+                    // Verify the loop was closed correctly
+                    var allLoopsAfter = dotPlacementHandler.GetAllLoopPositions();
+                    int completedCount = dotPlacementHandler.GetCompletedLoopCount();
+                    
+                    if (allLoopsAfter.Count >= completedCount && completedCount > 0)
+                    {
+                        var closedLoop = allLoopsAfter[completedCount - 1];
+                        if (closedLoop.Count != positionsBeforeClosing.Count)
+                        {
+                            Debug.LogWarning($"Dot count changed during closing! Before: {positionsBeforeClosing.Count}, After: {closedLoop.Count}");
+                        }
+                    }
+                }
+            }
+            else
+            {
+                Debug.LogError("LoopSystemLoader: Could not find CloseCurrentLoop method");
+            }
+        }
+        catch (System.Exception e)
+        {
+            Debug.LogError($"LoopSystemLoader: Error closing loop: {e.Message}");
         }
     }
     
@@ -210,30 +375,157 @@ public class LoopSystemLoader : MonoBehaviour
     }
     
     /// <summary>
-    /// Force close the current loop using reflection
+    /// Force close the current loop using reflection (legacy method - use ForceCloseCurrentLoopSafely instead)
     /// </summary>
     void ForceCloseCurrentLoop()
     {
-        if (dotPlacementHandler == null) return;
+        ForceCloseCurrentLoopSafely();
+    }
+    
+    /// <summary>
+    /// Find the first dot in the current loop being drawn
+    /// </summary>
+    GameObject FindFirstDotInCurrentLoop()
+    {
+        if (dotPlacementHandler?.dotsParent == null) 
+            return null;
         
+        // The first dot in the current loop should be the one with name starting with "TempLoop_Dot1"
+        // Based on the DotPlacementHandler code, dots are named "TempLoop_Dot{number}"
+        for (int i = 0; i < dotPlacementHandler.dotsParent.childCount; i++)
+        {
+            Transform child = dotPlacementHandler.dotsParent.GetChild(i);
+            if (child != null && child.name.Contains("TempLoop_Dot1"))
+            {
+                return child.gameObject;
+            }
+        }
+        
+        // Alternative: find the first dot by getting current loop positions
         try
         {
-            // Use reflection to call the private CloseCurrentLoop method
-            var method = typeof(DotPlacementHandler_MRTK3).GetMethod("CloseCurrentLoop", 
-                System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
-            
-            if (method != null)
+            var allLoops = dotPlacementHandler.GetAllLoopPositions();
+            if (allLoops.Count > 0)
             {
-                method.Invoke(dotPlacementHandler, null);
-            }
-            else
-            {
-                Debug.LogError("LoopSystemLoader: Could not find CloseCurrentLoop method");
+                var currentLoop = allLoops[allLoops.Count - 1]; // Last loop is current
+                if (currentLoop.Count > 0)
+                {
+                    Vector3 firstPosition = currentLoop[0];
+                    return FindDotAtPosition(firstPosition);
+                }
             }
         }
         catch (System.Exception e)
         {
-            Debug.LogError($"LoopSystemLoader: Error closing loop: {e.Message}");
+            if (debugMode)
+                Debug.LogError($"Error finding first dot: {e.Message}");
+        }
+        
+        return null;
+    }
+    
+    /// <summary>
+    /// Find a dot GameObject at or near a specific position
+    /// </summary>
+    GameObject FindDotAtPosition(Vector3 position)
+    {
+        if (dotPlacementHandler?.dotsParent == null) return null;
+        
+        float threshold = 0.05f; // Use the same threshold as dotClickThreshold in DotPlacementHandler
+        
+        for (int i = 0; i < dotPlacementHandler.dotsParent.childCount; i++)
+        {
+            Transform child = dotPlacementHandler.dotsParent.GetChild(i);
+            if (child != null && Vector3.Distance(child.position, position) < threshold)
+            {
+                return child.gameObject;
+            }
+        }
+        
+        return null;
+    }
+    
+    /// <summary>
+    /// Debug method to check if your loop data is being saved correctly
+    /// Call this BEFORE saving to see what should be saved
+    /// </summary>
+    public void DebugCurrentLoopBeforeSaving()
+    {
+        if (dotPlacementHandler == null) return;
+        
+        Debug.Log("=== DEBUGGING CURRENT LOOPS BEFORE SAVING ===");
+        var allLoops = dotPlacementHandler.GetAllLoopPositions();
+        int completedLoops = dotPlacementHandler.GetCompletedLoopCount();
+        
+        for (int i = 0; i < allLoops.Count; i++)
+        {
+            var loop = allLoops[i];
+            bool isCompleted = i < completedLoops;
+            
+            Debug.Log($"Loop {i + 1} - Completed: {isCompleted}, Dots: {loop.Count}");
+            
+            for (int j = 0; j < loop.Count; j++)
+            {
+                Debug.Log($"  Dot {j + 1}: {loop[j]}");
+            }
+            
+            // Check if first and last positions are the same (which would be wrong)
+            if (loop.Count > 1)
+            {
+                float distance = Vector3.Distance(loop[0], loop[loop.Count - 1]);
+                if (distance < 0.01f)
+                {
+                    Debug.LogWarning($"  WARNING: First and last dots are at same position! Distance: {distance}");
+                    Debug.LogWarning($"  This suggests the loop closure created a duplicate dot");
+                }
+            }
+        }
+    }
+    
+    /// <summary>
+    /// Alternative method: Check if the issue is in the saved data format
+    /// Call this method to debug what's actually being saved vs restored
+    /// </summary>
+    public void DebugSavedVsActualDots(LoopSystemData savedData)
+    {
+        if (debugMode && savedData?.loops != null)
+        {
+            Debug.Log("=== DEBUGGING SAVED VS ACTUAL DOTS ===");
+            
+            for (int i = 0; i < savedData.loops.Count; i++)
+            {
+                var savedLoop = savedData.loops[i];
+                Debug.Log($"Saved Loop {i + 1}:");
+                Debug.Log($"  dotCount: {savedLoop.dotCount}");
+                Debug.Log($"  positions.Length: {savedLoop.positions?.Length ?? 0}");
+                Debug.Log($"  isCompleted: {savedLoop.isCompleted}");
+                
+                if (savedLoop.positions != null)
+                {
+                    for (int j = 0; j < savedLoop.positions.Length; j++)
+                    {
+                        Debug.Log($"    Position {j}: {savedLoop.positions[j]}");
+                    }
+                }
+            }
+            
+            // Now check what the current system has
+            if (dotPlacementHandler != null)
+            {
+                var currentLoops = dotPlacementHandler.GetAllLoopPositions();
+                Debug.Log($"Current system has {currentLoops.Count} loops");
+                
+                for (int i = 0; i < currentLoops.Count; i++)
+                {
+                    var currentLoop = currentLoops[i];
+                    Debug.Log($"Current Loop {i + 1}: {currentLoop.Count} dots");
+                    
+                    for (int j = 0; j < currentLoop.Count; j++)
+                    {
+                        Debug.Log($"    Position {j}: {currentLoop[j]}");
+                    }
+                }
+            }
         }
     }
     
