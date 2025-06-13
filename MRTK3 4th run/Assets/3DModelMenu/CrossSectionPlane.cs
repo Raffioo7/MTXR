@@ -14,13 +14,6 @@ public class CrossSectionPlaneHandler_MRTK3 : MonoBehaviour
     [Tooltip("Button to update/apply the cross-section cut")]
     public GameObject updateCrossSectionButton;
     
-    [Header("Update Mode")]
-    [Tooltip("Manual: Only update when button is pressed. Auto: Update in real-time (more laggy)")]
-    public bool manualUpdateMode = true;
-    
-    [Tooltip("Show visual feedback when cross-section needs updating")]
-    public bool showUpdateIndicator = true;
-    
     [Header("Cross-Section Settings")]
     [Tooltip("Only affect children of this object (leave empty to use the object this script is on)")]
     public Transform targetParent;
@@ -39,9 +32,6 @@ public class CrossSectionPlaneHandler_MRTK3 : MonoBehaviour
     
     [Tooltip("Color of the cutting plane")]
     public Color planeColor = new Color(1f, 0f, 0f, 0.3f);
-    
-    [Tooltip("Color of the plane when update is needed (manual mode only)")]
-    public Color planeColorNeedsUpdate = new Color(1f, 1f, 0f, 0.5f);
     
     [Tooltip("Which side of the plane to hide (true = hide positive side, false = hide negative side)")]
     public bool hidePositiveSide = true;
@@ -74,17 +64,6 @@ public class CrossSectionPlaneHandler_MRTK3 : MonoBehaviour
     [Tooltip("Generate cut surface geometry to fill holes")]
     public bool generateCutSurface = true;
     
-    [Header("Performance Settings")]
-    [Tooltip("How often to update cross-section (lower = better performance) - Only used in Auto mode")]
-    [Range(0.01f, 0.5f)]
-    public float updateInterval = 0.1f;
-    
-    [Tooltip("Minimum distance plane must move to trigger update indicator")]
-    public float movementThreshold = 0.01f;
-    
-    [Tooltip("Minimum rotation plane must rotate to trigger update indicator (degrees)")]
-    public float rotationThreshold = 1f;
-    
     [Tooltip("Use simple object culling instead of mesh slicing for better performance")]
     public bool useSimpleMode = false;
     
@@ -97,24 +76,14 @@ public class CrossSectionPlaneHandler_MRTK3 : MonoBehaviour
     
     // Private fields
     private bool isCrossSectionActive = false;
-    private bool needsUpdate = false;
-    private bool isCurrentlyUpdated = true; // Track if the current cut matches the plane position
     private GameObject crossSectionPlane;
     private List<Renderer> affectedRenderers = new List<Renderer>();
     private Dictionary<Renderer, Material[]> originalMaterials = new Dictionary<Renderer, Material[]>();
     private Dictionary<Renderer, Material[]> clippedMaterials = new Dictionary<Renderer, Material[]>();
     private Dictionary<Renderer, MeshSliceData> originalMeshData = new Dictionary<Renderer, MeshSliceData>();
     
-    // Performance optimization variables
-    private float lastUpdateTime = 0f;
-    private Vector3 lastPlanePosition;
-    private Quaternion lastPlaneRotation;
-    private Vector3 lastAppliedPosition; // Position where the cut was last applied
-    private Quaternion lastAppliedRotation; // Rotation where the cut was last applied
-    
     // Materials for visual feedback
     private Material planeMaterial;
-    private Material planeOriginalMaterial;
     
     // Shader property names for clipping
     private static readonly int ClipPlane = Shader.PropertyToID("_ClipPlane");
@@ -162,7 +131,7 @@ public class CrossSectionPlaneHandler_MRTK3 : MonoBehaviour
         if (debugMode)
         {
             Debug.Log($"CrossSectionHandler: Initialized with {affectedRenderers.Count} renderers under {targetParent.name}");
-            Debug.Log($"CrossSectionHandler: Update mode: {(manualUpdateMode ? "MANUAL" : "AUTO")}");
+            Debug.Log("CrossSectionHandler: Pure manual mode - no automatic updates");
         }
     }
     
@@ -200,7 +169,7 @@ public class CrossSectionPlaneHandler_MRTK3 : MonoBehaviour
             Component updateButtonInteractable = updateCrossSectionButton.GetComponent("StatefulInteractable");
             if (updateButtonInteractable != null)
             {
-                bool subscribed = TrySubscribeToButtonClick(updateButtonInteractable, ManualUpdateCrossSection);
+                bool subscribed = TrySubscribeToButtonClick(updateButtonInteractable, ApplyCrossSection);
                 
                 if (debugMode)
                 {
@@ -218,9 +187,9 @@ public class CrossSectionPlaneHandler_MRTK3 : MonoBehaviour
             // Set initial button state
             UpdateButtonStates();
         }
-        else if (manualUpdateMode)
+        else
         {
-            Debug.LogWarning("CrossSectionHandler: Manual update mode enabled but no update button assigned!");
+            Debug.LogWarning("CrossSectionHandler: No update button assigned!");
         }
     }
     
@@ -257,99 +226,43 @@ public class CrossSectionPlaneHandler_MRTK3 : MonoBehaviour
         return false;
     }
     
-    // NEW METHOD: Manual update trigger
-    public void ManualUpdateCrossSection()
+    // Main method for applying cross-section - simplified name
+    public void ApplyCrossSection()
     {
         if (!isCrossSectionActive)
         {
             if (debugMode)
-                Debug.LogWarning("CrossSectionHandler: Cannot update - cross-section is not active");
+                Debug.LogWarning("CrossSectionHandler: Cannot apply - cross-section is not active");
             return;
         }
         
         if (crossSectionPlane == null)
         {
             if (debugMode)
-                Debug.LogWarning("CrossSectionHandler: Cannot update - no cross-section plane found");
+                Debug.LogWarning("CrossSectionHandler: Cannot apply - no cross-section plane found");
             return;
         }
         
         if (debugMode)
-            Debug.Log("CrossSectionHandler: Manual update triggered");
+            Debug.Log("CrossSectionHandler: Applying cross-section at current plane position");
         
-        // Force update the clipping
-        ForceUpdateClippingPlane();
-        
-        // Update our tracking variables
-        lastAppliedPosition = crossSectionPlane.transform.position;
-        lastAppliedRotation = crossSectionPlane.transform.rotation;
-        lastPlanePosition = lastAppliedPosition;
-        lastPlaneRotation = lastAppliedRotation;
-        
-        isCurrentlyUpdated = true;
-        needsUpdate = false;
-        
-        // Update visual feedback
-        UpdatePlaneVisualFeedback();
-        UpdateButtonStates();
+        // Apply the clipping at current plane position
+        ApplyClippingPlane();
     }
     
-    // NEW METHOD: Check if update is needed
-    private bool CheckIfUpdateNeeded()
-    {
-        if (crossSectionPlane == null || !isCrossSectionActive) return false;
-        
-        Vector3 currentPosition = crossSectionPlane.transform.position;
-        Quaternion currentRotation = crossSectionPlane.transform.rotation;
-        
-        bool positionChanged = Vector3.Distance(currentPosition, lastAppliedPosition) > movementThreshold;
-        bool rotationChanged = Quaternion.Angle(currentRotation, lastAppliedRotation) > rotationThreshold;
-        
-        return positionChanged || rotationChanged;
-    }
-    
-    // NEW METHOD: Update plane visual feedback
-    private void UpdatePlaneVisualFeedback()
-    {
-        if (!showUpdateIndicator || crossSectionPlane == null || planeMaterial == null) return;
-        
-        if (manualUpdateMode && !isCurrentlyUpdated)
-        {
-            // Show that update is needed
-            planeMaterial.color = planeColorNeedsUpdate;
-        }
-        else
-        {
-            // Show normal state
-            planeMaterial.color = planeColor;
-        }
-    }
-    
-    // NEW METHOD: Update button states
+    // Update button states - simplified without movement detection
     private void UpdateButtonStates()
     {
         // Update toggle button
-        UpdateButtonVisualFeedback();
+        UpdateToggleButtonVisualFeedback();
         
-        // Update the update button (make it glow or change color when update is needed)
+        // Update the update button based on cross-section state
         if (updateCrossSectionButton != null)
         {
             Renderer buttonRenderer = updateCrossSectionButton.GetComponentInChildren<Renderer>();
             if (buttonRenderer != null && buttonRenderer.material != null)
             {
-                Color targetColor;
-                if (manualUpdateMode && !isCurrentlyUpdated && isCrossSectionActive)
-                {
-                    targetColor = Color.yellow; // Indicate update needed
-                }
-                else if (isCrossSectionActive)
-                {
-                    targetColor = Color.green; // Active and up to date
-                }
-                else
-                {
-                    targetColor = Color.gray; // Inactive
-                }
+                Color targetColor = isCrossSectionActive ? Color.green : Color.gray;
                 
                 if (buttonRenderer.material.HasProperty("_Color"))
                 {
@@ -371,9 +284,6 @@ public class CrossSectionPlaneHandler_MRTK3 : MonoBehaviour
         
         planeMaterial = new Material(Shader.Find("Universal Render Pipeline/Lit"));
         planeMaterial.color = planeColor;
-        
-        // Store original material reference
-        planeOriginalMaterial = planeMaterial;
         
         // Make the plane transparent
         planeMaterial.SetFloat("_Surface", 1);
@@ -427,9 +337,6 @@ public class CrossSectionPlaneHandler_MRTK3 : MonoBehaviour
         // Set up basic components that don't require MRTK3
         SetupBasicInteraction(planeObj);
         
-        // Provide alternative: Create a simple manipulation system
-        CreateFallbackManipulation(planeObj);
-        
         if (debugMode)
         {
             Debug.Log("CrossSectionHandler: Basic setup completed. For full MRTK3 functionality, please:");
@@ -474,53 +381,6 @@ public class CrossSectionPlaneHandler_MRTK3 : MonoBehaviour
             Debug.Log($"  - BoxCollider (trigger): {boxCollider != null}");
             Debug.Log($"  - Rigidbody (kinematic, no constraints): {rb != null}");
             Debug.Log($"  - Layer: {planeObj.layer}");
-        }
-    }
-    
-    // Add a public method to temporarily disable our transform monitoring
-    public void SetManipulationMode(bool isManipulating)
-    {
-        if (isManipulating)
-        {
-            // Store current state before manipulation
-            if (crossSectionPlane != null)
-            {
-                lastPlanePosition = crossSectionPlane.transform.position;
-                lastPlaneRotation = crossSectionPlane.transform.rotation;
-            }
-        }
-        else
-        {
-            // In manual mode, just mark that we need an update
-            if (manualUpdateMode)
-            {
-                isCurrentlyUpdated = false;
-                UpdatePlaneVisualFeedback();
-                UpdateButtonStates();
-            }
-            else
-            {
-                // In auto mode, force an update after manipulation ends
-                needsUpdate = true;
-            }
-        }
-        
-        if (debugMode)
-            Debug.Log($"CrossSectionHandler: Manipulation mode set to {isManipulating}");
-    }
-    
-    void CreateFallbackManipulation(GameObject planeObj)
-    {
-        // Add a simple script component that can be used for basic manipulation
-        // This won't provide MRTK3 hand tracking, but gives a foundation
-        
-        if (debugMode)
-        {
-            Debug.Log("CrossSectionHandler: Fallback manipulation setup completed.");
-            Debug.Log("For MRTK3 hand interaction, please manually add these components:");
-            Debug.Log("  1. ObjectManipulator (from MRTK3)");
-            Debug.Log("  2. NearInteractionGrabbable (from MRTK3)");
-            Debug.Log("  3. StatefulInteractable (from MRTK3)");
         }
     }
     
@@ -642,29 +502,14 @@ public class CrossSectionPlaneHandler_MRTK3 : MonoBehaviour
             {
                 planeMaterial = planeRenderer.material;
             }
-            
-            lastPlanePosition = spawnPosition;
-            lastPlaneRotation = crossSectionPlane.transform.rotation;
-            lastAppliedPosition = spawnPosition;
-            lastAppliedRotation = crossSectionPlane.transform.rotation;
         }
         
         crossSectionPlane.SetActive(true);
         CreateClippedMaterials();
         ApplyClippedMaterials();
         
-        // In manual mode, we start with the cut applied at the current position
-        if (manualUpdateMode)
-        {
-            ForceUpdateClippingPlane();
-            isCurrentlyUpdated = true;
-        }
-        else
-        {
-            needsUpdate = true;
-        }
-        
-        UpdatePlaneVisualFeedback();
+        // Apply the initial cut at spawn position
+        ApplyClippingPlane();
     }
     
     void DisableCrossSection()
@@ -686,9 +531,6 @@ public class CrossSectionPlaneHandler_MRTK3 : MonoBehaviour
         }
         
         Shader.SetGlobalFloat("_ClippingEnabled", 0f);
-        
-        isCurrentlyUpdated = true;
-        needsUpdate = false;
     }
     
     Vector3 GetSpawnPosition()
@@ -834,7 +676,7 @@ public class CrossSectionPlaneHandler_MRTK3 : MonoBehaviour
         }
     }
     
-    void UpdateButtonVisualFeedback()
+    void UpdateToggleButtonVisualFeedback()
     {
         if (toggleCrossSectionButton != null)
         {
@@ -855,97 +697,8 @@ public class CrossSectionPlaneHandler_MRTK3 : MonoBehaviour
         }
     }
     
-    void Update()
-    {
-        if (isCrossSectionActive && crossSectionPlane != null && crossSectionPlane.activeInHierarchy)
-        {
-            if (manualUpdateMode)
-            {
-                // In manual mode, only check if update is needed and provide visual feedback
-                if (CheckIfUpdateNeeded() && isCurrentlyUpdated)
-                {
-                    isCurrentlyUpdated = false;
-                    UpdatePlaneVisualFeedback();
-                    UpdateButtonStates();
-                    
-                    if (debugMode)
-                        Debug.Log("CrossSectionHandler: Plane moved - update needed");
-                }
-            }
-            else
-            {
-                // Auto mode - update in real-time like before
-                bool timeToUpdate = Time.time - lastUpdateTime >= updateInterval;
-                bool planeMoved = Vector3.Distance(crossSectionPlane.transform.position, lastPlanePosition) > movementThreshold;
-                bool planeRotated = Quaternion.Angle(crossSectionPlane.transform.rotation, lastPlaneRotation) > rotationThreshold;
-                
-                if (timeToUpdate && (planeMoved || planeRotated || needsUpdate))
-                {
-                    UpdateClippingPlane();
-                    lastUpdateTime = Time.time;
-                    lastPlanePosition = crossSectionPlane.transform.position;
-                    lastPlaneRotation = crossSectionPlane.transform.rotation;
-                    lastAppliedPosition = lastPlanePosition;
-                    lastAppliedRotation = lastPlaneRotation;
-                    needsUpdate = false;
-                    isCurrentlyUpdated = true;
-                }
-            }
-        }
-    }
-    
-    bool IsPlaneBeingManipulated()
-    {
-        if (crossSectionPlane == null) return false;
-        
-        // Check if ObjectManipulator is currently manipulating the object
-        var components = crossSectionPlane.GetComponents<Component>();
-        foreach (var component in components)
-        {
-            if (component.GetType().Name.Contains("ObjectManipulator"))
-            {
-                // Try to get the manipulation state via reflection
-                try
-                {
-                    var isManipulatingField = component.GetType().GetField("isManipulating");
-                    if (isManipulatingField != null)
-                    {
-                        bool isManipulating = (bool)isManipulatingField.GetValue(component);
-                        if (isManipulating) return true;
-                    }
-                    
-                    // Try alternative field names
-                    var manipulationStateField = component.GetType().GetField("manipulationState");
-                    if (manipulationStateField != null)
-                    {
-                        var state = manipulationStateField.GetValue(component);
-                        if (state != null && !state.ToString().Contains("None"))
-                        {
-                            return true;
-                        }
-                    }
-                    
-                    // Try property instead of field
-                    var isManipulatingProperty = component.GetType().GetProperty("IsManipulating");
-                    if (isManipulatingProperty != null)
-                    {
-                        bool isManipulating = (bool)isManipulatingProperty.GetValue(component);
-                        if (isManipulating) return true;
-                    }
-                }
-                catch (System.Exception e)
-                {
-                    if (debugMode)
-                        Debug.LogWarning($"CrossSectionHandler: Could not check manipulation state: {e.Message}");
-                }
-            }
-        }
-        
-        return false;
-    }
-    
-    // MODIFIED: Renamed for clarity and made public
-    void ForceUpdateClippingPlane()
+    // Apply the clipping at current plane position
+    void ApplyClippingPlane()
     {
         if (crossSectionPlane == null) return;
         
@@ -962,13 +715,7 @@ public class CrossSectionPlaneHandler_MRTK3 : MonoBehaviour
         }
         
         if (debugMode)
-            Debug.Log("CrossSectionHandler: Force updated clipping plane");
-    }
-    
-    // MODIFIED: Wrapper for backward compatibility
-    void UpdateClippingPlane()
-    {
-        ForceUpdateClippingPlane();
+            Debug.Log("CrossSectionHandler: Applied clipping plane");
     }
     
     void UpdateSimpleObjectCulling(Vector3 planePosition, Vector3 planeNormal)
@@ -1417,7 +1164,6 @@ public class CrossSectionPlaneHandler_MRTK3 : MonoBehaviour
         }
         
         // Add triangulated vertices to the main mesh
-        int baseIndex = vertices.Count;
         Vector3 normal = hidePositiveSide ? -planeNormal : planeNormal;
         
         for (int i = 0; i < triangulatedIndices.Count; i += 3)
@@ -1549,13 +1295,6 @@ public class CrossSectionPlaneHandler_MRTK3 : MonoBehaviour
             Vector3 moveDirection = crossSectionPlane.transform.forward;
             crossSectionPlane.transform.position += moveDirection * distance;
             
-            if (manualUpdateMode)
-            {
-                isCurrentlyUpdated = false;
-                UpdatePlaneVisualFeedback();
-                UpdateButtonStates();
-            }
-            
             if (debugMode)
                 Debug.Log($"CrossSectionHandler: Moved plane by {distance} units");
         }
@@ -1566,13 +1305,6 @@ public class CrossSectionPlaneHandler_MRTK3 : MonoBehaviour
         if (crossSectionPlane != null && isCrossSectionActive)
         {
             crossSectionPlane.transform.Rotate(axis, degrees, Space.World);
-            
-            if (manualUpdateMode)
-            {
-                isCurrentlyUpdated = false;
-                UpdatePlaneVisualFeedback();
-                UpdateButtonStates();
-            }
             
             if (debugMode)
                 Debug.Log($"CrossSectionHandler: Rotated plane {degrees}° around {axis}");
@@ -1605,13 +1337,6 @@ public class CrossSectionPlaneHandler_MRTK3 : MonoBehaviour
         if (crossSectionPlane != null)
         {
             crossSectionPlane.transform.position = position;
-            
-            if (manualUpdateMode)
-            {
-                isCurrentlyUpdated = false;
-                UpdatePlaneVisualFeedback();
-                UpdateButtonStates();
-            }
         }
     }
     
@@ -1620,13 +1345,6 @@ public class CrossSectionPlaneHandler_MRTK3 : MonoBehaviour
         if (crossSectionPlane != null)
         {
             crossSectionPlane.transform.rotation = rotation;
-            
-            if (manualUpdateMode)
-            {
-                isCurrentlyUpdated = false;
-                UpdatePlaneVisualFeedback();
-                UpdateButtonStates();
-            }
         }
     }
     
@@ -1640,53 +1358,15 @@ public class CrossSectionPlaneHandler_MRTK3 : MonoBehaviour
         return crossSectionPlane != null ? crossSectionPlane.transform.up : Vector3.up;
     }
     
-    // NEW: Additional public methods for manual mode
-    public void SetUpdateMode(bool manual)
-    {
-        bool wasManual = manualUpdateMode;
-        manualUpdateMode = manual;
-        
-        if (wasManual && !manual && isCrossSectionActive)
-        {
-            // Switching from manual to auto - apply any pending updates
-            if (!isCurrentlyUpdated)
-            {
-                ForceUpdateClippingPlane();
-                isCurrentlyUpdated = true;
-            }
-        }
-        
-        UpdatePlaneVisualFeedback();
-        UpdateButtonStates();
-        
-        if (debugMode)
-            Debug.Log($"CrossSectionHandler: Update mode changed to {(manual ? "MANUAL" : "AUTO")}");
-    }
-    
-    public bool IsUpdateNeeded()
-    {
-        return manualUpdateMode && !isCurrentlyUpdated && isCrossSectionActive;
-    }
-    
-    public bool GetUpdateMode()
-    {
-        return manualUpdateMode;
-    }
-    
     void OnValidate()
     {
         planeSize.x = Mathf.Max(0.1f, planeSize.x);
         planeSize.y = Mathf.Max(0.1f, planeSize.y);
         
         planeColor.a = Mathf.Clamp01(planeColor.a);
-        planeColorNeedsUpdate.a = Mathf.Clamp01(planeColorNeedsUpdate.a);
         cutSurfaceColor.a = Mathf.Clamp01(cutSurfaceColor.a);
         
         spawnDistance = Mathf.Max(0.1f, spawnDistance);
-        
-        updateInterval = Mathf.Max(0.01f, updateInterval);
-        movementThreshold = Mathf.Max(0.001f, movementThreshold);
-        rotationThreshold = Mathf.Max(0.1f, rotationThreshold);
         smoothingThreshold = Mathf.Max(0.001f, smoothingThreshold);
     }
     

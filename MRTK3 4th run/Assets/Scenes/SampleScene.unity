@@ -15757,15 +15757,14 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   toggleCrossSectionButton: {fileID: 509098590}
   updateCrossSectionButton: {fileID: 1496623105}
-  manualUpdateMode: 1
   showUpdateIndicator: 1
   targetParent: {fileID: 0}
   spawnNearPanel: {fileID: 331516345}
   spawnDistance: 1
   planePrefab: {fileID: 4683812031246308692, guid: bdc7763086c893249b8fa01161f8171a, type: 3}
   planeSize: {x: 1, y: 1}
-  planeColor: {r: 1, g: 0, b: 0, a: 0.44705883}
-  planeColorNeedsUpdate: {r: 1, g: 1, b: 0, a: 0.5}
+  planeColor: {r: 1, g: 1, b: 0.53396225, a: 0.24313726}
+  planeColorNeedsUpdate: {r: 1, g: 0, b: 0.010410309, a: 0.21568628}
   hidePositiveSide: 1
   initialPosition: {x: 0, y: -0.5, z: 0}
   initialRotation: {x: 90, y: 225, z: 0}
@@ -15775,7 +15774,6 @@ MonoBehaviour:
   showCutSurface: 0
   smoothingThreshold: 0.001
   generateCutSurface: 0
-  updateInterval: 0.5
   movementThreshold: 0.01
   rotationThreshold: 1
   useSimpleMode: 0
