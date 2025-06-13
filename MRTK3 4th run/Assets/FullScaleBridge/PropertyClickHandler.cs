@@ -14,8 +14,9 @@ public class PropertyClickHandler_MRTK3 : MonoBehaviour
     public GameObject unhighlightButton; // Add reference to your MRTK3 button GameObject
     public GameObject secondButton; // Add reference to your second MRTK3 button GameObject
     public GameObject thirdButton; // Add reference to your third MRTK3 button GameObject
-    public GameObject highlightDependentObject; // NEW: GameObject that's active only when something is highlighted
-    public GameObject thirdButtonPanel; // NEW: Panel that controls third button visibility
+    public GameObject highlightDependentObject; // GameObject that's active only when something is highlighted
+    public GameObject thirdButtonPanel; // Panel that controls third button visibility
+    public GameObject mainPanel; // NEW: Main panel that must be active for highlighting to work
     
     [Header("Connected Systems")]
     public SimpleInspectionLoader inspectionLoader; // Reference to inspection loader
@@ -71,7 +72,7 @@ public class PropertyClickHandler_MRTK3 : MonoBehaviour
             SetupThirdButton();
         }
         
-        // NEW: Hide highlight-dependent object initially
+        // Hide highlight-dependent object initially
         if (highlightDependentObject != null)
         {
             highlightDependentObject.SetActive(false);
@@ -89,13 +90,33 @@ public class PropertyClickHandler_MRTK3 : MonoBehaviour
         return thirdButtonPanel != null && thirdButtonPanel.activeInHierarchy;
     }
     
+    // NEW: Helper method to check if main panel is active (required for highlighting)
+    private bool IsMainPanelActive()
+    {
+        return mainPanel != null && mainPanel.activeInHierarchy;
+    }
+    
     // Helper method to check if highlighting should be blocked
     private bool IsHighlightingBlocked()
     {
-        return IsThirdButtonPanelVisible();
+        // Highlighting is blocked if:
+        // 1. Third button panel is visible, OR
+        // 2. Main panel is not active (NEW CONDITION)
+        bool thirdPanelBlocking = IsThirdButtonPanelVisible();
+        bool mainPanelNotActive = !IsMainPanelActive();
+        
+        if (debugMode && (thirdPanelBlocking || mainPanelNotActive))
+        {
+            if (thirdPanelBlocking)
+                Debug.Log("Highlighting blocked: Third button panel is visible");
+            if (mainPanelNotActive)
+                Debug.Log("Highlighting blocked: Main panel is not active");
+        }
+        
+        return thirdPanelBlocking || mainPanelNotActive;
     }
     
-    // NEW: Helper method to check if something is currently highlighted
+    // Helper method to check if something is currently highlighted
     private bool IsAnythingHighlighted()
     {
         return currentlySelected != null;
@@ -107,7 +128,7 @@ public class PropertyClickHandler_MRTK3 : MonoBehaviour
         return currentlySelected;
     }
     
-    // NEW: Method to update third button visibility based on its panel
+    // Method to update third button visibility based on its panel
     private void UpdateThirdButtonVisibility()
     {
         if (thirdButton != null && thirdButtonPanel != null)
@@ -422,7 +443,7 @@ public class PropertyClickHandler_MRTK3 : MonoBehaviour
         return false;
     }
     
-    // NEW: Method to update highlight-dependent object visibility
+    // Method to update highlight-dependent object visibility
     private void UpdateHighlightDependentObject()
     {
         if (highlightDependentObject != null)
@@ -445,6 +466,14 @@ public class PropertyClickHandler_MRTK3 : MonoBehaviour
         
         // Check third button panel visibility every frame
         UpdateThirdButtonVisibility();
+        
+        // NEW: Check if main panel becomes inactive and clear selection if needed
+        if (currentlySelected != null && !IsMainPanelActive())
+        {
+            if (debugMode)
+                Debug.Log("Main panel became inactive - clearing selection");
+            ClearSelection();
+        }
     }
     
     public void OnObjectClicked(GameObject clickedObject)
@@ -456,7 +485,7 @@ public class PropertyClickHandler_MRTK3 : MonoBehaviour
         if (IsHighlightingBlocked())
         {
             if (debugMode)
-                Debug.Log("PropertyClickHandler: Highlighting blocked - third button panel is visible, ignoring object selection");
+                Debug.Log("PropertyClickHandler: Highlighting blocked - ignoring object selection");
             return;
         }
         
@@ -486,10 +515,10 @@ public class PropertyClickHandler_MRTK3 : MonoBehaviour
         ShowUnhighlightButton();
         ShowSecondButton();
         
-        // NEW: Update highlight-dependent object visibility
+        // Update highlight-dependent object visibility
         UpdateHighlightDependentObject();
         
-        // NEW: Notify inspection loader that element selection changed
+        // Notify inspection loader that element selection changed
         // The inspection loader will automatically detect this change in its Update method
         if (debugMode)
             Debug.Log($"Element selected: {clickedObject.name} - inspection loader will update automatically");
@@ -560,10 +589,10 @@ public class PropertyClickHandler_MRTK3 : MonoBehaviour
         HideSecondButton(); // Hide the second button when selection is cleared
         // Third button visibility is controlled by thirdButtonPanel in Update()
         
-        // NEW: Update highlight-dependent object visibility
+        // Update highlight-dependent object visibility
         UpdateHighlightDependentObject();
         
-        // NEW: Notify inspection loader that selection was cleared
+        // Notify inspection loader that selection was cleared
         // The inspection loader will automatically detect this change in its Update method
         if (debugMode)
             Debug.Log("Selection cleared - inspection loader will update automatically");
@@ -677,7 +706,7 @@ public class PropertyClickHandler_MRTK3 : MonoBehaviour
         if (IsHighlightingBlocked())
         {
             if (debugMode)
-                Debug.Log("PropertyClickHandler: Cannot unhighlight - third button panel is visible");
+                Debug.Log("PropertyClickHandler: Cannot unhighlight - conditions not met");
             return;
         }
         
