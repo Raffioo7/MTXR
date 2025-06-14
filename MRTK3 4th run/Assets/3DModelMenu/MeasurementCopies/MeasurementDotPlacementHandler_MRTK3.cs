@@ -68,6 +68,11 @@ public class MeasurementDotPlacementHandler_MRTK3 : MonoBehaviour
     // Hand interaction tracking
     private HashSet<GameObject> subscribedObjects = new HashSet<GameObject>();
     
+    // Cache for hand ray components
+    private Component[] handRayComponents;
+    private float lastHandRayUpdateTime = 0f;
+    private float handRayUpdateInterval = 0.1f;
+    
     void Start()
     {
         // Find the PropertyClickHandler_MRTK3 script
@@ -103,6 +108,9 @@ public class MeasurementDotPlacementHandler_MRTK3 : MonoBehaviour
         // Setup hand interactions for all RevitData objects
         SetupHandInteractions();
         
+        // Initialize hand ray components cache
+        UpdateHandRayComponentsCache();
+        
         // Initialize panel state (start hidden)
         if (panel != null)
         {
@@ -113,31 +121,91 @@ public class MeasurementDotPlacementHandler_MRTK3 : MonoBehaviour
             Debug.Log("MeasurementDotPlacementHandler: Initialized successfully");
     }
     
+    void UpdateHandRayComponentsCache()
+    {
+        var allComponents = FindObjectsOfType<MonoBehaviour>();
+        handRayComponents = allComponents.Where(mb => 
+            mb.GetType().Name.Contains("HandRay") ||
+            mb.GetType().Name.Contains("PokeRay") ||
+            mb.GetType().Name.Contains("HandInteractor") ||
+            mb.GetType().Name.Contains("RayInteractor") ||
+            mb.GetType().Name.Contains("FarRay") ||
+            mb.GetType().Name.Contains("NearRay") ||
+            (mb.gameObject.name.ToLower().Contains("hand") && 
+             (mb.GetType().Name.Contains("Ray") || mb.GetType().Name.Contains("Interactor")))
+        ).ToArray();
+        
+        if (debugMode)
+            Debug.Log($"MeasurementDotPlacementHandler: Found {handRayComponents.Length} potential hand ray components");
+    }
+    
     void SetupHandInteractions()
     {
-        // Find all objects with RevitData component
         RevitData[] revitObjects = FindObjectsOfType<RevitData>();
         
         if (debugMode)
             Debug.Log($"MeasurementDotPlacementHandler: Found {revitObjects.Length} RevitData objects for hand interaction");
         
-        foreach (RevitData revitData in revitObjects)
+        int successfulSubscriptions = 0;
+        
+        // Check if we can piggyback on the existing PropertyClickHandler system
+        if (propertyHandler != null)
         {
-            GameObject obj = revitData.gameObject;
+            if (debugMode)
+                Debug.Log("MeasurementDotPlacementHandler: Found PropertyClickHandler - attempting to integrate with existing system");
             
-            // Get existing StatefulInteractable component
-            Component interactable = obj.GetComponent("StatefulInteractable");
-            if (interactable != null)
+            // The PropertyClickHandler already handles all the interaction setup
+            // We just need to detect when objects are clicked through that system
+            successfulSubscriptions = revitObjects.Length;
+            
+            foreach (RevitData revitData in revitObjects)
             {
-                bool subscribed = TrySubscribeToDotPlacementEvent(interactable, obj);
+                subscribedObjects.Add(revitData.gameObject);
+            }
+            
+            if (debugMode)
+                Debug.Log($"MeasurementDotPlacementHandler: Integrated with PropertyClickHandler for {successfulSubscriptions} objects");
+        }
+        else
+        {
+            // Fallback: Try to find StatefulInteractable on individual objects
+            foreach (RevitData revitData in revitObjects)
+            {
+                GameObject obj = revitData.gameObject;
                 
-                if (subscribed)
+                // Get existing StatefulInteractable component
+                Component interactable = obj.GetComponent("StatefulInteractable");
+                if (interactable != null)
                 {
-                    subscribedObjects.Add(obj);
                     if (debugMode)
-                        Debug.Log($"MeasurementDotPlacementHandler: Successfully subscribed to {obj.name}");
+                        Debug.Log($"MeasurementDotPlacementHandler: Found StatefulInteractable on {obj.name}");
+                    
+                    // Try to find and subscribe to the OnClicked event
+                    bool subscribed = TrySubscribeToDotPlacementEvent(interactable, obj);
+                    
+                    if (subscribed)
+                    {
+                        subscribedObjects.Add(obj);
+                        successfulSubscriptions++;
+                        if (debugMode)
+                            Debug.Log($"MeasurementDotPlacementHandler: Successfully subscribed to {obj.name}");
+                    }
+                }
+                else if (debugMode)
+                {
+                    Debug.LogWarning($"MeasurementDotPlacementHandler: No StatefulInteractable found on {obj.name}");
                 }
             }
+        }
+        
+        if (debugMode)
+        {
+            Debug.Log($"MeasurementDotPlacementHandler: Successfully set up interaction for {successfulSubscriptions} out of {revitObjects.Length} RevitData objects");
+        }
+        
+        if (successfulSubscriptions == 0)
+        {
+            Debug.LogError("MeasurementDotPlacementHandler: No objects were successfully set up for interaction!");
         }
     }
     
@@ -176,7 +244,6 @@ public class MeasurementDotPlacementHandler_MRTK3 : MonoBehaviour
     
     public void OnObjectClickedForDotPlacement(GameObject clickedObject)
     {
-        // Only process if dot placement mode is active
         if (!isPlacementModeActive)
         {
             if (debugMode)
@@ -187,11 +254,168 @@ public class MeasurementDotPlacementHandler_MRTK3 : MonoBehaviour
         if (debugMode)
             Debug.Log($"MeasurementDotPlacementHandler: Hand clicked on {clickedObject.name} for dot placement");
         
-        // Update the currently highlighted object
         currentHighlightedObject = clickedObject;
         
-        // For simplicity, place dot at object center with upward normal
-        PlaceDotOnObjectSmart(clickedObject);
+        Vector3 hitPoint;
+        Vector3 hitNormal;
+        
+        if (GetCurrentHandRayHit(clickedObject, out hitPoint, out hitNormal))
+        {
+            GameObject clickedDot = GetClickedDotNearPosition(hitPoint);
+            if (clickedDot != null)
+            {
+                HandleDotClick(clickedDot);
+                return;
+            }
+            
+            PlaceDotAtPosition(hitPoint, hitNormal);
+        }
+        else
+        {
+            PlaceDotOnObjectSmart(clickedObject);
+        }
+    }
+    
+    bool GetCurrentHandRayHit(GameObject targetObject, out Vector3 hitPoint, out Vector3 hitNormal)
+    {
+        hitPoint = Vector3.zero;
+        hitNormal = Vector3.up;
+        
+        if (Time.time - lastHandRayUpdateTime > handRayUpdateInterval)
+        {
+            UpdateHandRayComponentsCache();
+            lastHandRayUpdateTime = Time.time;
+        }
+        
+        foreach (var handRayComponent in handRayComponents)
+        {
+            if (handRayComponent == null || !handRayComponent.gameObject.activeInHierarchy) continue;
+            
+            if (TryGetHandRayHitFromComponent(handRayComponent, targetObject, out hitPoint, out hitNormal))
+            {
+                if (debugMode)
+                    Debug.Log($"MeasurementDotPlacementHandler: Got hit from {handRayComponent.GetType().Name}");
+                return true;
+            }
+        }
+        
+        if (debugMode)
+            Debug.LogWarning("MeasurementDotPlacementHandler: Could not get hand ray hit, using fallback");
+        
+        return false;
+    }
+    
+    bool TryGetHandRayHitFromComponent(Component handRayComponent, GameObject targetObject, out Vector3 hitPoint, out Vector3 hitNormal)
+    {
+        hitPoint = Vector3.zero;
+        hitNormal = Vector3.up;
+        
+        Type componentType = handRayComponent.GetType();
+        string[] hitProperties = { 
+            "raycastHit", "RaycastHit", "currentRaycastHit", "CurrentRaycastHit",
+            "hitInfo", "HitInfo", "lastHit", "LastHit", "result", "Result"
+        };
+        
+        foreach (string propName in hitProperties)
+        {
+            PropertyInfo prop = componentType.GetProperty(propName, BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance);
+            if (prop != null)
+            {
+                object value = prop.GetValue(handRayComponent);
+                if (TryExtractHitInfo(value, targetObject, out hitPoint, out hitNormal))
+                    return true;
+            }
+            
+            FieldInfo field = componentType.GetField(propName, BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance);
+            if (field != null)
+            {
+                object value = field.GetValue(handRayComponent);
+                if (TryExtractHitInfo(value, targetObject, out hitPoint, out hitNormal))
+                    return true;
+            }
+        }
+        
+        return false;
+    }
+    
+    bool TryExtractHitInfo(object hitObject, GameObject targetObject, out Vector3 hitPoint, out Vector3 hitNormal)
+    {
+        hitPoint = Vector3.zero;
+        hitNormal = Vector3.up;
+        
+        if (hitObject == null) return false;
+        
+        if (hitObject is RaycastHit)
+        {
+            RaycastHit hit = (RaycastHit)hitObject;
+            if (hit.collider != null && hit.collider.gameObject == targetObject)
+            {
+                hitPoint = hit.point;
+                hitNormal = hit.normal;
+                return true;
+            }
+        }
+        
+        Type hitType = hitObject.GetType();
+        Vector3? position = TryGetVector3FromObject(hitObject, hitType, new string[] { "point", "position", "hitPoint", "worldPosition" });
+        Vector3? normal = TryGetVector3FromObject(hitObject, hitType, new string[] { "normal", "surfaceNormal", "hitNormal" });
+        GameObject hitGameObject = TryGetGameObjectFromObject(hitObject, hitType);
+        
+        if (position.HasValue && hitGameObject == targetObject)
+        {
+            hitPoint = position.Value;
+            hitNormal = normal ?? Vector3.up;
+            return true;
+        }
+        
+        return false;
+    }
+    
+    Vector3? TryGetVector3FromObject(object obj, Type objType, string[] propertyNames)
+    {
+        foreach (string propName in propertyNames)
+        {
+            PropertyInfo prop = objType.GetProperty(propName, BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance);
+            if (prop != null && prop.PropertyType == typeof(Vector3))
+            {
+                return (Vector3)prop.GetValue(obj);
+            }
+            
+            FieldInfo field = objType.GetField(propName, BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance);
+            if (field != null && field.FieldType == typeof(Vector3))
+            {
+                return (Vector3)field.GetValue(obj);
+            }
+        }
+        return null;
+    }
+    
+    GameObject TryGetGameObjectFromObject(object obj, Type objType)
+    {
+        string[] gameObjectProperties = { "gameObject", "GameObject", "collider", "transform" };
+        
+        foreach (string propName in gameObjectProperties)
+        {
+            PropertyInfo prop = objType.GetProperty(propName, BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance);
+            if (prop != null)
+            {
+                object value = prop.GetValue(obj);
+                if (value is GameObject) return (GameObject)value;
+                if (value is Collider) return ((Collider)value).gameObject;
+                if (value is Transform) return ((Transform)value).gameObject;
+            }
+            
+            FieldInfo field = objType.GetField(propName, BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance);
+            if (field != null)
+            {
+                object value = field.GetValue(obj);
+                if (value is GameObject) return (GameObject)value;
+                if (value is Collider) return ((Collider)value).gameObject;
+                if (value is Transform) return ((Transform)value).gameObject;
+            }
+        }
+        
+        return null;
     }
     
     void PlaceDotOnObjectSmart(GameObject targetObject)
@@ -201,7 +425,6 @@ public class MeasurementDotPlacementHandler_MRTK3 : MonoBehaviour
         
         if (GetSmartSurfacePointOnObject(targetObject, out surfacePosition, out surfaceNormal))
         {
-            // Check if we clicked on an existing dot first
             GameObject clickedDot = GetClickedDotNearPosition(surfacePosition);
             if (clickedDot != null)
             {
@@ -225,7 +448,6 @@ public class MeasurementDotPlacementHandler_MRTK3 : MonoBehaviour
         Collider objCollider = obj.GetComponent<Collider>();
         if (objCollider == null)
         {
-            // Use renderer bounds as fallback
             Renderer objRenderer = obj.GetComponent<Renderer>();
             if (objRenderer != null)
             {
@@ -234,19 +456,16 @@ public class MeasurementDotPlacementHandler_MRTK3 : MonoBehaviour
                 return true;
             }
             
-            // Last resort: use transform position
             position = obj.transform.position;
             normal = Vector3.up;
             return true;
         }
         
-        // Use camera position as reference
         if (Camera.main != null)
         {
             Vector3 cameraPosition = Camera.main.transform.position;
             Vector3 closestPoint = objCollider.ClosestPoint(cameraPosition);
             
-            // Raycast from camera to the surface
             Vector3 direction = (closestPoint - cameraPosition).normalized;
             RaycastHit hit;
             if (Physics.Raycast(cameraPosition, direction, out hit, Mathf.Infinity))
@@ -259,14 +478,12 @@ public class MeasurementDotPlacementHandler_MRTK3 : MonoBehaviour
                 }
             }
             
-            // Fallback: use closest point
             position = closestPoint;
             normal = (closestPoint - obj.transform.position).normalized;
             if (normal.magnitude < 0.001f) normal = Vector3.up;
             return true;
         }
         
-        // Method 3: Use object bounds center
         Renderer objRenderer2 = obj.GetComponent<Renderer>();
         if (objRenderer2 != null)
         {
@@ -275,7 +492,6 @@ public class MeasurementDotPlacementHandler_MRTK3 : MonoBehaviour
             return true;
         }
         
-        // Last resort: use transform position
         position = obj.transform.position;
         normal = Vector3.up;
         return true;
@@ -283,7 +499,6 @@ public class MeasurementDotPlacementHandler_MRTK3 : MonoBehaviour
     
     GameObject GetClickedDotNearPosition(Vector3 position)
     {
-        // Check current loop first
         foreach (GameObject dot in currentLoop)
         {
             if (dot != null && Vector3.Distance(dot.transform.position, position) <= dotClickThreshold)
@@ -292,7 +507,6 @@ public class MeasurementDotPlacementHandler_MRTK3 : MonoBehaviour
             }
         }
         
-        // Check completed loops
         foreach (var loop in dotLoops)
         {
             foreach (GameObject dot in loop)
@@ -309,7 +523,6 @@ public class MeasurementDotPlacementHandler_MRTK3 : MonoBehaviour
     
     void HandleDotClick(GameObject clickedDot)
     {
-        // Check if it's the first dot of the current loop (to close the loop)
         if (currentLoop.Count > 2 && clickedDot == currentLoop[0])
         {
             CloseCurrentLoop();
@@ -329,11 +542,9 @@ public class MeasurementDotPlacementHandler_MRTK3 : MonoBehaviour
             return;
         }
         
-        // Add current loop to completed loops
         dotLoops.Add(new List<GameObject>(currentLoop));
         int loopIndex = dotLoops.Count - 1;
         
-        // Rename dots to include loop information
         for (int i = 0; i < currentLoop.Count; i++)
         {
             currentLoop[i].name = $"MeasurementLoop{loopIndex + 1}_Dot{i + 1}";
@@ -342,10 +553,7 @@ public class MeasurementDotPlacementHandler_MRTK3 : MonoBehaviour
         if (debugMode)
             Debug.Log($"MeasurementDotPlacementHandler: Closed loop {loopIndex + 1} with {currentLoop.Count} dots");
         
-        // Trigger event
         OnMeasurementLoopClosed?.Invoke(loopIndex);
-        
-        // Start a new loop
         StartNewLoop();
     }
     
@@ -357,13 +565,11 @@ public class MeasurementDotPlacementHandler_MRTK3 : MonoBehaviour
         if (debugMode)
             Debug.Log($"MeasurementDotPlacementHandler: Started new loop {newLoopIndex + 1}");
         
-        // Trigger event
         OnMeasurementNewLoopStarted?.Invoke(newLoopIndex);
     }
     
     void PlaceDotAtPosition(Vector3 position, Vector3 normal)
     {
-        // Create a new dot instance
         GameObject newDot = Instantiate(dotPrefab, position + normal * surfaceOffset, Quaternion.identity, dotsParent);
         newDot.SetActive(true);
         
@@ -371,33 +577,23 @@ public class MeasurementDotPlacementHandler_MRTK3 : MonoBehaviour
         int dotNumber = currentLoop.Count + 1;
         
         newDot.name = $"MeasurementTempLoop_Dot{dotNumber}";
-        
-        // Optional: Make the dot face along the surface normal
         newDot.transform.up = normal;
         
-        // Add to current loop
         currentLoop.Add(newDot);
-        
-        // Update appearance based on whether it's the first dot
         UpdateDotAppearance(newDot, isFirstDot);
         
         if (debugMode)
-            Debug.Log($"MeasurementDotPlacementHandler: Placed dot #{dotNumber} at {position} on {currentHighlightedObject?.name ?? "unknown object"}");
+            Debug.Log($"MeasurementDotPlacementHandler: Placed dot #{dotNumber} at {position}");
     }
     
     void CreateDefaultDotPrefab()
     {
-        // Create a simple sphere as the default dot
         dotPrefab = GameObject.CreatePrimitive(PrimitiveType.Sphere);
         dotPrefab.name = "MeasurementDotPrefab";
         
-        // Remove collider to prevent interference
         Destroy(dotPrefab.GetComponent<Collider>());
-        
-        // Set default size
         dotPrefab.transform.localScale = Vector3.one * dotSize;
         
-        // Set default material and color
         Renderer renderer = dotPrefab.GetComponent<Renderer>();
         if (renderer != null)
         {
@@ -405,23 +601,16 @@ public class MeasurementDotPlacementHandler_MRTK3 : MonoBehaviour
             renderer.material.color = dotColor;
         }
         
-        // Deactivate the prefab
         dotPrefab.SetActive(false);
     }
     
     void SetupDotPlacementButtons()
     {
-        // Setup first button
         if (dotPlacementButton != null)
         {
             SetupSingleButton(dotPlacementButton, "first");
         }
-        else
-        {
-            Debug.LogWarning("MeasurementDotPlacementHandler: No first dot placement button assigned!");
-        }
         
-        // Setup second button
         if (dotPlacementButton2 != null)
         {
             SetupSingleButton(dotPlacementButton2, "second");
@@ -430,7 +619,6 @@ public class MeasurementDotPlacementHandler_MRTK3 : MonoBehaviour
     
     void SetupSingleButton(GameObject button, string buttonName)
     {
-        // Get the MRTK3 StatefulInteractable component
         Component buttonInteractable = button.GetComponent("StatefulInteractable");
         if (buttonInteractable != null)
         {
@@ -439,14 +627,10 @@ public class MeasurementDotPlacementHandler_MRTK3 : MonoBehaviour
             if (debugMode)
             {
                 if (subscribed)
-                    Debug.Log($"MeasurementDotPlacementHandler: Successfully set up {buttonName} dot placement button");
+                    Debug.Log($"MeasurementDotPlacementHandler: Successfully set up {buttonName} button");
                 else
-                    Debug.LogWarning($"MeasurementDotPlacementHandler: Failed to set up {buttonName} dot placement button");
+                    Debug.LogWarning($"MeasurementDotPlacementHandler: Failed to set up {buttonName} button");
             }
-        }
-        else if (debugMode)
-        {
-            Debug.LogWarning($"MeasurementDotPlacementHandler: No StatefulInteractable found on {buttonName} dot placement button");
         }
     }
     
@@ -485,19 +669,16 @@ public class MeasurementDotPlacementHandler_MRTK3 : MonoBehaviour
     
     public void ToggleDotPlacementModeAndPanel()
     {
-        // Toggle dot placement mode
         isPlacementModeActive = !isPlacementModeActive;
         
-        // Toggle panel
         if (panel != null)
         {
             panel.SetActive(!panel.activeSelf);
         }
         
         if (debugMode)
-            Debug.Log($"MeasurementDotPlacementHandler: Dot placement mode is now {(isPlacementModeActive ? "ACTIVE" : "INACTIVE")}, Panel is now {(panel != null && panel.activeSelf ? "VISIBLE" : "HIDDEN")}");
+            Debug.Log($"MeasurementDotPlacementHandler: Dot placement mode is now {(isPlacementModeActive ? "ACTIVE" : "INACTIVE")}");
         
-        // Update button visual feedback if needed
         UpdateButtonVisualFeedback();
     }
     
@@ -538,13 +719,23 @@ public class MeasurementDotPlacementHandler_MRTK3 : MonoBehaviour
     
     void Update()
     {
-        // Check for runtime parameter changes
         CheckForParameterChanges();
-        
-        // Get the currently highlighted object from PropertyClickHandler
         currentHighlightedObject = GetCurrentlyHighlightedObject();
         
-        // Optional: Exit placement mode with Escape
+        // If we're using the PropertyClickHandler system, check for object clicks
+        if (propertyHandler != null && isPlacementModeActive)
+        {
+            GameObject currentlySelected = propertyHandler.GetCurrentlySelected();
+            if (currentlySelected != null && currentlySelected != currentHighlightedObject)
+            {
+                // An object was clicked through the PropertyClickHandler
+                if (subscribedObjects.Contains(currentlySelected))
+                {
+                    OnObjectClickedForDotPlacement(currentlySelected);
+                }
+            }
+        }
+        
         if (Input.GetKeyDown(KeyCode.Escape))
         {
             if (isPlacementModeActive)
@@ -558,7 +749,7 @@ public class MeasurementDotPlacementHandler_MRTK3 : MonoBehaviour
                 
                 UpdateButtonVisualFeedback();
                 if (debugMode)
-                    Debug.Log("MeasurementDotPlacementHandler: Exited dot placement mode and hid panel");
+                    Debug.Log("MeasurementDotPlacementHandler: Exited dot placement mode");
             }
         }
     }
@@ -612,7 +803,6 @@ public class MeasurementDotPlacementHandler_MRTK3 : MonoBehaviour
             }
         }
         
-        // Update current loop
         for (int i = 0; i < currentLoop.Count; i++)
         {
             GameObject dot = currentLoop[i];
@@ -622,7 +812,6 @@ public class MeasurementDotPlacementHandler_MRTK3 : MonoBehaviour
             }
         }
         
-        // Update the prefab if it exists
         if (dotPrefab != null && dotPrefab.name == "MeasurementDotPrefab")
         {
             dotPrefab.transform.localScale = Vector3.one * dotSize;
@@ -636,11 +825,9 @@ public class MeasurementDotPlacementHandler_MRTK3 : MonoBehaviour
     
     void UpdateDotAppearance(GameObject dot, bool isFirstDot)
     {
-        // Update dot size
         float size = isFirstDot ? dotSize * firstDotSizeMultiplier : dotSize;
         dot.transform.localScale = Vector3.one * size;
         
-        // Update dot color
         Renderer renderer = dot.GetComponent<Renderer>();
         if (renderer != null && renderer.material != null)
         {
@@ -667,7 +854,6 @@ public class MeasurementDotPlacementHandler_MRTK3 : MonoBehaviour
     // Public methods for managing dots
     public void ClearAllDots()
     {
-        // Clear completed loops
         foreach (var loop in dotLoops)
         {
             foreach (GameObject dot in loop)
@@ -678,7 +864,6 @@ public class MeasurementDotPlacementHandler_MRTK3 : MonoBehaviour
         }
         dotLoops.Clear();
         
-        // Clear current loop
         foreach (GameObject dot in currentLoop)
         {
             if (dot != null)
@@ -705,7 +890,6 @@ public class MeasurementDotPlacementHandler_MRTK3 : MonoBehaviour
         }
         else if (dotLoops.Count > 0)
         {
-            // If no dots in current loop, remove the last completed loop
             var lastLoop = dotLoops[dotLoops.Count - 1];
             foreach (GameObject dot in lastLoop)
             {
@@ -723,7 +907,6 @@ public class MeasurementDotPlacementHandler_MRTK3 : MonoBehaviour
     {
         List<Vector3> positions = new List<Vector3>();
         
-        // Add positions from completed loops
         foreach (var loop in dotLoops)
         {
             foreach (GameObject dot in loop)
@@ -733,7 +916,6 @@ public class MeasurementDotPlacementHandler_MRTK3 : MonoBehaviour
             }
         }
         
-        // Add positions from current loop
         foreach (GameObject dot in currentLoop)
         {
             if (dot != null)
@@ -747,7 +929,6 @@ public class MeasurementDotPlacementHandler_MRTK3 : MonoBehaviour
     {
         List<List<Vector3>> allLoops = new List<List<Vector3>>();
         
-        // Add completed loops
         foreach (var loop in dotLoops)
         {
             List<Vector3> loopPositions = new List<Vector3>();
@@ -760,7 +941,6 @@ public class MeasurementDotPlacementHandler_MRTK3 : MonoBehaviour
                 allLoops.Add(loopPositions);
         }
         
-        // Add current loop if it has dots
         if (currentLoop.Count > 0)
         {
             List<Vector3> currentLoopPositions = new List<Vector3>();
@@ -785,50 +965,12 @@ public class MeasurementDotPlacementHandler_MRTK3 : MonoBehaviour
         return currentLoop.Count;
     }
     
-    void OnValidate()
-    {
-        // Ensure positive values
-        dotSize = Mathf.Max(0.001f, dotSize);
-        firstDotSizeMultiplier = Mathf.Max(0.1f, firstDotSizeMultiplier);
-        surfaceOffset = Mathf.Max(0.0001f, surfaceOffset);
-        dotClickThreshold = Mathf.Max(0.001f, dotClickThreshold);
-    }
-    
-    void OnDestroy()
-    {
-        // Clean up
-        ClearAllDots();
-        
-        if (dotPrefab != null && dotPrefab.name == "MeasurementDotPrefab")
-            Destroy(dotPrefab);
-        
-        // Unsubscribe from all object events
-        UnsubscribeFromAllObjects();
-    }
-    
-    void UnsubscribeFromAllObjects()
-    {
-        foreach (GameObject obj in subscribedObjects)
-        {
-            if (obj != null)
-            {
-                Component interactable = obj.GetComponent("StatefulInteractable");
-                if (interactable != null)
-                {
-                    // Note: We can't easily remove specific listeners, so we'll leave them
-                    // The listeners will naturally be cleaned up when the object is destroyed
-                }
-            }
-        }
-        subscribedObjects.Clear();
-    }
-    
-    // Public method to manually subscribe to a new object if needed
     public void SubscribeToNewObject(GameObject obj)
     {
         if (obj.GetComponent<RevitData>() == null) return;
         if (subscribedObjects.Contains(obj)) return;
         
+        // Get existing StatefulInteractable component (same as PropertyClickHandler)
         Component interactable = obj.GetComponent("StatefulInteractable");
         if (interactable != null)
         {
@@ -840,10 +982,31 @@ public class MeasurementDotPlacementHandler_MRTK3 : MonoBehaviour
                     Debug.Log($"MeasurementDotPlacementHandler: Manually subscribed to {obj.name}");
             }
         }
+        else if (debugMode)
+        {
+            Debug.LogWarning($"MeasurementDotPlacementHandler: No StatefulInteractable found on {obj.name}");
+        }
+    }
+    
+    void OnValidate()
+    {
+        dotSize = Mathf.Max(0.001f, dotSize);
+        firstDotSizeMultiplier = Mathf.Max(0.1f, firstDotSizeMultiplier);
+        surfaceOffset = Mathf.Max(0.0001f, surfaceOffset);
+        dotClickThreshold = Mathf.Max(0.001f, dotClickThreshold);
+    }
+    
+    void OnDestroy()
+    {
+        ClearAllDots();
+        
+        if (dotPrefab != null && dotPrefab.name == "MeasurementDotPrefab")
+            Destroy(dotPrefab);
+        
+        subscribedObjects.Clear();
     }
 }
 
-// Simple component to make labels face the camera
 public class MeasurementFaceCamera : MonoBehaviour
 {
     void LateUpdate()
