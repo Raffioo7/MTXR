@@ -31,6 +31,19 @@ public class SimpleMeshCutter : MonoBehaviour
     public float subdivisionThreshold = 0.1f;
     [Tooltip("Fill holes in cut surfaces")]
     public bool fillCutHoles = true;
+    [Tooltip("Hide entire objects that don't intersect with the cutting plane")]
+    public bool hideNonIntersectingObjects = true;
+    [Tooltip("Use object bounds for intersection testing")]
+    public bool useBoundsForIntersection = true;
+    [Tooltip("Ensure consistent triangle winding")]
+    public bool ensureCorrectWinding = true;
+    [Tooltip("Recalculate normals for better lighting")]
+    public bool recalculateNormals = true;
+    [Tooltip("Minimum triangle area to avoid degenerate triangles")]
+    [Range(0.0001f, 0.01f)]
+    public float minimumTriangleArea = 0.001f;
+    [Tooltip("Make cut meshes double-sided (disable backface culling)")]
+    public bool makeDoubleSided = true;
     
     private struct OriginalMeshData
     {
@@ -38,6 +51,12 @@ public class SimpleMeshCutter : MonoBehaviour
         public Mesh originalMesh;
         public MeshFilter meshFilter;
         public MeshRenderer meshRenderer;
+    }
+    
+    private struct OriginalObjectData
+    {
+        public GameObject gameObject;
+        public bool wasActive;
     }
     
     private struct Triangle
@@ -57,7 +76,9 @@ public class SimpleMeshCutter : MonoBehaviour
     }
     
     private List<OriginalMeshData> originalMeshes = new List<OriginalMeshData>();
+    private List<OriginalObjectData> originalObjects = new List<OriginalObjectData>();
     private List<GameObject> cutObjects = new List<GameObject>();
+    private List<GameObject> hiddenObjects = new List<GameObject>();
     
     void Start()
     {
@@ -66,11 +87,12 @@ public class SimpleMeshCutter : MonoBehaviour
             cutButton.OnClicked.AddListener(PerformCut);
         }
         
-        StoreOriginalMeshes();
+        StoreOriginalData();
     }
     
-    void StoreOriginalMeshes()
+    void StoreOriginalData()
     {
+        // Store mesh data
         MeshFilter[] meshFilters = targetObject.GetComponentsInChildren<MeshFilter>();
         
         foreach (var meshFilter in meshFilters)
@@ -85,6 +107,25 @@ public class SimpleMeshCutter : MonoBehaviour
                     meshRenderer = meshFilter.GetComponent<MeshRenderer>()
                 };
                 originalMeshes.Add(meshData);
+            }
+        }
+        
+        // Store all child objects data for potential hiding
+        if (hideNonIntersectingObjects)
+        {
+            Transform[] allTransforms = targetObject.GetComponentsInChildren<Transform>(true);
+            
+            foreach (var transform in allTransforms)
+            {
+                if (transform.gameObject != targetObject) // Don't include the root target object
+                {
+                    var objectData = new OriginalObjectData
+                    {
+                        gameObject = transform.gameObject,
+                        wasActive = transform.gameObject.activeSelf
+                    };
+                    originalObjects.Add(objectData);
+                }
             }
         }
     }
@@ -102,24 +143,202 @@ public class SimpleMeshCutter : MonoBehaviour
         Vector3 planePosition = cuttingPlane.transform.position;
         Vector3 planeNormal = hidePositiveSide ? cuttingPlane.transform.up : -cuttingPlane.transform.up;
         
+        // Process meshes for cutting
         foreach (var meshData in originalMeshes)
         {
             if (meshData.originalMesh == null) continue;
             
-            Mesh slicedMesh = SliceMesh(meshData.originalMesh, planePosition, planeNormal, meshData.gameObject.transform);
+            // Check if this mesh intersects with the cutting plane
+            bool meshIntersectsPlane = MeshIntersectsPlane(meshData.originalMesh, planePosition, planeNormal, meshData.gameObject.transform);
             
-            if (slicedMesh != null)
+            if (meshIntersectsPlane)
             {
-                CreateCutObject(slicedMesh, meshData, "_Cut");
+                // Mesh intersects - perform cutting
+                Mesh slicedMesh = SliceMesh(meshData.originalMesh, planePosition, planeNormal, meshData.gameObject.transform);
                 
-                if (destroyOriginal)
+                if (slicedMesh != null)
+                {
+                    CreateCutObject(slicedMesh, meshData, "_Cut");
+                    
+                    if (destroyOriginal)
+                    {
+                        meshData.gameObject.SetActive(false);
+                    }
+                }
+            }
+            else
+            {
+                // Mesh doesn't intersect - check if it should be hidden
+                bool shouldHideMesh = ShouldHideObject(meshData.gameObject, planePosition, planeNormal);
+                
+                if (shouldHideMesh)
                 {
                     meshData.gameObject.SetActive(false);
+                    hiddenObjects.Add(meshData.gameObject);
                 }
+                // If mesh is on the visible side, leave it as is
             }
         }
         
+        // Hide non-mesh objects that are entirely on the wrong side of the plane
+        if (hideNonIntersectingObjects)
+        {
+            HideNonMeshObjectsOnWrongSide(planePosition, planeNormal);
+        }
+        
         Debug.Log($"Mesh cutting completed with subdivision level {subdivisionLevels}!");
+    }
+    
+    bool MeshIntersectsPlane(Mesh mesh, Vector3 planePosition, Vector3 planeNormal, Transform objectTransform)
+    {
+        if (mesh == null || !mesh.isReadable) return false;
+        
+        // Transform plane to local space
+        Vector3 localPlanePosition = objectTransform.InverseTransformPoint(planePosition);
+        Vector3 localPlaneNormal = objectTransform.InverseTransformDirection(planeNormal).normalized;
+        
+        Vector3[] vertices = mesh.vertices;
+        
+        bool hasPositive = false;
+        bool hasNegative = false;
+        
+        // Check each vertex to see which side of the plane it's on
+        foreach (Vector3 vertex in vertices)
+        {
+            float distance = Vector3.Dot(vertex - localPlanePosition, localPlaneNormal);
+            
+            if (distance > edgeSmoothingThreshold)
+                hasPositive = true;
+            else if (distance < -edgeSmoothingThreshold)
+                hasNegative = true;
+            
+            // If we have vertices on both sides, the mesh intersects the plane
+            if (hasPositive && hasNegative)
+                return true;
+        }
+        
+        // All vertices are on one side - no intersection
+        return false;
+    }
+    
+    void HideNonMeshObjectsOnWrongSide(Vector3 planePosition, Vector3 planeNormal)
+    {
+        foreach (var objectData in originalObjects)
+        {
+            if (objectData.gameObject == null || !objectData.wasActive) continue;
+            
+            // Skip objects that have meshes (they're handled by the mesh processing)
+            if (objectData.gameObject.GetComponent<MeshFilter>() != null) continue;
+            
+            bool shouldHide = ShouldHideObject(objectData.gameObject, planePosition, planeNormal);
+            
+            if (shouldHide)
+            {
+                objectData.gameObject.SetActive(false);
+                hiddenObjects.Add(objectData.gameObject);
+            }
+        }
+    }
+    
+    bool ShouldHideObject(GameObject obj, Vector3 planePosition, Vector3 planeNormal)
+    {
+        if (useBoundsForIntersection)
+        {
+            return ShouldHideObjectByBounds(obj, planePosition, planeNormal);
+        }
+        else
+        {
+            return ShouldHideObjectByPosition(obj, planePosition, planeNormal);
+        }
+    }
+    
+    bool ShouldHideObjectByBounds(GameObject obj, Vector3 planePosition, Vector3 planeNormal)
+    {
+        // Get all renderers in this object and its children
+        Renderer[] renderers = obj.GetComponentsInChildren<Renderer>();
+        
+        if (renderers.Length == 0)
+        {
+            // If no renderers, fall back to position-based check
+            return ShouldHideObjectByPosition(obj, planePosition, planeNormal);
+        }
+        
+        // Check if any renderer bounds intersect with the plane
+        foreach (var renderer in renderers)
+        {
+            if (renderer == null || !renderer.enabled) continue;
+            
+            Bounds bounds = renderer.bounds;
+            
+            // Get all 8 corners of the bounding box
+            Vector3[] corners = new Vector3[8];
+            Vector3 center = bounds.center;
+            Vector3 extents = bounds.extents;
+            
+            corners[0] = center + new Vector3(-extents.x, -extents.y, -extents.z);
+            corners[1] = center + new Vector3(extents.x, -extents.y, -extents.z);
+            corners[2] = center + new Vector3(-extents.x, extents.y, -extents.z);
+            corners[3] = center + new Vector3(extents.x, extents.y, -extents.z);
+            corners[4] = center + new Vector3(-extents.x, -extents.y, extents.z);
+            corners[5] = center + new Vector3(extents.x, -extents.y, extents.z);
+            corners[6] = center + new Vector3(-extents.x, extents.y, extents.z);
+            corners[7] = center + new Vector3(extents.x, extents.y, extents.z);
+            
+            // Check which side of the plane each corner is on
+            bool hasPositive = false;
+            bool hasNegative = false;
+            
+            foreach (var corner in corners)
+            {
+                float distance = Vector3.Dot(corner - planePosition, planeNormal);
+                
+                if (distance > edgeSmoothingThreshold)
+                    hasPositive = true;
+                else if (distance < -edgeSmoothingThreshold)
+                    hasNegative = true;
+                
+                // If we have points on both sides, this object intersects the plane
+                if (hasPositive && hasNegative)
+                    return false; // Don't hide intersecting objects
+            }
+            
+            // If all corners are on one side, check if it's the side we want to hide
+            if (hasPositive && !hasNegative)
+            {
+                // All points are on positive side
+                return hidePositiveSide;
+            }
+            else if (hasNegative && !hasPositive)
+            {
+                // All points are on negative side
+                return !hidePositiveSide;
+            }
+        }
+        
+        // If we couldn't determine from bounds, fall back to position check
+        return ShouldHideObjectByPosition(obj, planePosition, planeNormal);
+    }
+    
+    bool ShouldHideObjectByPosition(GameObject obj, Vector3 planePosition, Vector3 planeNormal)
+    {
+        // Simple position-based check using object's transform position
+        Vector3 objectPosition = obj.transform.position;
+        float distance = Vector3.Dot(objectPosition - planePosition, planeNormal);
+        
+        // Apply smoothing threshold
+        if (Mathf.Abs(distance) < edgeSmoothingThreshold)
+            return false; // Don't hide objects very close to the plane
+        
+        if (distance > 0)
+        {
+            // Object is on positive side
+            return hidePositiveSide;
+        }
+        else
+        {
+            // Object is on negative side
+            return !hidePositiveSide;
+        }
     }
     
     Mesh SliceMesh(Mesh originalMesh, Vector3 planePosition, Vector3 planeNormal, Transform objectTransform)
@@ -201,15 +420,35 @@ public class SimpleMeshCutter : MonoBehaviour
         slicedMesh.vertices = newVertices.ToArray();
         slicedMesh.triangles = newTriangles.ToArray();
         
-        if (newNormals.Count == newVertices.Count)
-            slicedMesh.normals = newNormals.ToArray();
-        else
+        // Handle normals
+        if (recalculateNormals || newNormals.Count != newVertices.Count)
+        {
             slicedMesh.RecalculateNormals();
+        }
+        else
+        {
+            slicedMesh.normals = newNormals.ToArray();
+        }
         
+        // Handle UVs - ensure we have UVs for all vertices
         if (newUVs.Count == newVertices.Count)
+        {
             slicedMesh.uv = newUVs.ToArray();
+        }
+        else
+        {
+            // Generate basic UVs if none exist
+            Vector2[] generatedUVs = new Vector2[newVertices.Count];
+            for (int i = 0; i < newVertices.Count; i++)
+            {
+                Vector3 vertex = newVertices[i];
+                generatedUVs[i] = new Vector2(vertex.x * 0.5f + 0.5f, vertex.z * 0.5f + 0.5f);
+            }
+            slicedMesh.uv = generatedUVs;
+        }
         
         slicedMesh.RecalculateBounds();
+        slicedMesh.RecalculateTangents(); // Important for proper lighting
         
         return slicedMesh;
     }
@@ -303,10 +542,11 @@ public class SimpleMeshCutter : MonoBehaviour
         float d2 = Vector3.Dot(v2 - planePosition, planeNormal);
         float d3 = Vector3.Dot(v3 - planePosition, planeNormal);
         
-        // Apply smoothing threshold to reduce jagged edges
-        if (Mathf.Abs(d1) < edgeSmoothingThreshold) d1 = 0f;
-        if (Mathf.Abs(d2) < edgeSmoothingThreshold) d2 = 0f;
-        if (Mathf.Abs(d3) < edgeSmoothingThreshold) d3 = 0f;
+        // Apply smoothing threshold to reduce jagged edges (use a smaller threshold)
+        float threshold = edgeSmoothingThreshold * 0.1f; // Make threshold much smaller
+        if (Mathf.Abs(d1) < threshold) d1 = 0f;
+        if (Mathf.Abs(d2) < threshold) d2 = 0f;
+        if (Mathf.Abs(d3) < threshold) d3 = 0f;
         
         bool keep1 = hidePositiveSide ? (d1 <= 0) : (d1 >= 0);
         bool keep2 = hidePositiveSide ? (d2 <= 0) : (d2 >= 0);
@@ -375,6 +615,15 @@ public class SimpleMeshCutter : MonoBehaviour
         Vector3 intersectA = CalculateIntersection(keepA, discard, distA, distDiscard);
         Vector3 intersectB = CalculateIntersection(keepB, discard, distB, distDiscard);
         
+        // Validate intersection points aren't too close to existing vertices
+        if (Vector3.Distance(intersectA, keepA) < minimumTriangleArea * 10 || 
+            Vector3.Distance(intersectA, keepB) < minimumTriangleArea * 10 ||
+            Vector3.Distance(intersectB, keepA) < minimumTriangleArea * 10 || 
+            Vector3.Distance(intersectB, keepB) < minimumTriangleArea * 10)
+        {
+            return; // Skip this triangle to avoid degenerate geometry
+        }
+        
         // Store cut edge vertices for hole filling
         cutEdgeVertices.Add(intersectA);
         cutEdgeVertices.Add(intersectB);
@@ -438,6 +687,14 @@ public class SimpleMeshCutter : MonoBehaviour
         // Calculate intersection points
         Vector3 intersectA = CalculateIntersection(keep, discardA, distKeep, distDiscardA);
         Vector3 intersectB = CalculateIntersection(keep, discardB, distKeep, distDiscardB);
+        
+        // Validate intersection points
+        if (Vector3.Distance(intersectA, keep) < minimumTriangleArea * 10 || 
+            Vector3.Distance(intersectB, keep) < minimumTriangleArea * 10 ||
+            Vector3.Distance(intersectA, intersectB) < minimumTriangleArea * 10)
+        {
+            return; // Skip degenerate triangles
+        }
         
         // Store cut edge vertices for hole filling
         cutEdgeVertices.Add(intersectA);
@@ -567,6 +824,32 @@ public class SimpleMeshCutter : MonoBehaviour
                     Vector3 v1, Vector3 v2, Vector3 v3, Vector3 n1, Vector3 n2, Vector3 n3,
                     Vector2 uv1, Vector2 uv2, Vector2 uv3)
     {
+        // Check for degenerate triangles (very small area)
+        Vector3 edge1 = v2 - v1;
+        Vector3 edge2 = v3 - v1;
+        float area = Vector3.Cross(edge1, edge2).magnitude * 0.5f;
+        
+        if (area < minimumTriangleArea)
+        {
+            return; // Skip degenerate triangles
+        }
+        
+        // Ensure consistent winding order if enabled
+        if (ensureCorrectWinding)
+        {
+            Vector3 calculatedNormal = Vector3.Cross(edge1, edge2).normalized;
+            Vector3 averageNormal = (n1 + n2 + n3).normalized;
+            
+            // If the calculated normal is opposite to the average vertex normal, flip the triangle
+            if (Vector3.Dot(calculatedNormal, averageNormal) < 0)
+            {
+                // Swap v2 and v3 to flip winding
+                Vector3 tempV = v2; v2 = v3; v3 = tempV;
+                Vector3 tempN = n2; n2 = n3; n3 = tempN;
+                Vector2 tempUV = uv2; uv2 = uv3; uv3 = tempUV;
+            }
+        }
+        
         int startIndex = vertices.Count;
         vertices.AddRange(new Vector3[] { v1, v2, v3 });
         triangles.AddRange(new int[] { startIndex, startIndex + 1, startIndex + 2 });
@@ -588,7 +871,30 @@ public class SimpleMeshCutter : MonoBehaviour
         MeshRenderer meshRenderer = cutObject.AddComponent<MeshRenderer>();
         
         meshFilter.mesh = cutMesh;
-        meshRenderer.materials = originalData.meshRenderer.materials;
+        
+        // Copy materials and make them double-sided if requested
+        if (makeDoubleSided && originalData.meshRenderer.materials != null)
+        {
+            Material[] newMaterials = new Material[originalData.meshRenderer.materials.Length];
+            for (int i = 0; i < originalData.meshRenderer.materials.Length; i++)
+            {
+                Material originalMat = originalData.meshRenderer.materials[i];
+                Material newMat = new Material(originalMat);
+                
+                // Disable backface culling to make double-sided
+                if (newMat.HasProperty("_Cull"))
+                {
+                    newMat.SetFloat("_Cull", 0); // 0 = Off, 1 = Front, 2 = Back
+                }
+                
+                newMaterials[i] = newMat;
+            }
+            meshRenderer.materials = newMaterials;
+        }
+        else
+        {
+            meshRenderer.materials = originalData.meshRenderer.materials;
+        }
         
         if (originalData.gameObject.GetComponent<MeshCollider>())
         {
@@ -600,6 +906,7 @@ public class SimpleMeshCutter : MonoBehaviour
     
     void ClearCutObjects()
     {
+        // Clear cut objects
         foreach (var cutObject in cutObjects)
         {
             if (cutObject != null)
@@ -609,6 +916,17 @@ public class SimpleMeshCutter : MonoBehaviour
         }
         cutObjects.Clear();
         
+        // Restore hidden objects
+        foreach (var hiddenObject in hiddenObjects)
+        {
+            if (hiddenObject != null)
+            {
+                hiddenObject.SetActive(true);
+            }
+        }
+        hiddenObjects.Clear();
+        
+        // Restore original meshes
         if (destroyOriginal)
         {
             foreach (var meshData in originalMeshes)
@@ -624,5 +942,21 @@ public class SimpleMeshCutter : MonoBehaviour
     public void ResetCut()
     {
         ClearCutObjects();
+    }
+    
+    void OnDrawGizmos()
+    {
+        if (cuttingPlane != null)
+        {
+            // Draw the cutting plane for visualization
+            Gizmos.color = hidePositiveSide ? Color.red : Color.green;
+            Gizmos.matrix = cuttingPlane.transform.localToWorldMatrix;
+            Gizmos.DrawWireCube(Vector3.zero, new Vector3(2f, 0.01f, 2f));
+            
+            // Draw normal direction
+            Gizmos.color = Color.blue;
+            Vector3 normal = hidePositiveSide ? cuttingPlane.transform.up : -cuttingPlane.transform.up;
+            Gizmos.DrawRay(cuttingPlane.transform.position, normal * 0.5f);
+        }
     }
 }
