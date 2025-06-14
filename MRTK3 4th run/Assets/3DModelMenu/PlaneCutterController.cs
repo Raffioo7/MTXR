@@ -14,6 +14,10 @@ public class SimpleMeshCutter : MonoBehaviour
     [Header("MRTK Button")]
     public PressableButton cutButton;
     
+    [Header("MRTK Toggle Buttons")]
+    public PressableButton togglePlaneButton;
+    public PressableButton flipSideButton;
+    
     [Header("Cut Settings")]
     public bool destroyOriginal = true;
     [Tooltip("Which side of the plane to hide")]
@@ -30,7 +34,7 @@ public class SimpleMeshCutter : MonoBehaviour
     [Range(0.01f, 1.0f)]
     public float subdivisionThreshold = 0.1f;
     [Tooltip("Fill holes in cut surfaces")]
-    public bool fillCutHoles = true;
+    public bool fillCutHoles = false;
     [Tooltip("Hide entire objects that don't intersect with the cutting plane")]
     public bool hideNonIntersectingObjects = true;
     [Tooltip("Use object bounds for intersection testing")]
@@ -80,6 +84,9 @@ public class SimpleMeshCutter : MonoBehaviour
     private List<GameObject> cutObjects = new List<GameObject>();
     private List<GameObject> hiddenObjects = new List<GameObject>();
     
+    private bool isPlaneActive = false;
+    private bool isCutActive = false;
+    
     void Start()
     {
         if (cutButton != null)
@@ -87,7 +94,20 @@ public class SimpleMeshCutter : MonoBehaviour
             cutButton.OnClicked.AddListener(PerformCut);
         }
         
+        if (togglePlaneButton != null)
+        {
+            togglePlaneButton.OnClicked.AddListener(TogglePlane);
+        }
+        
+        if (flipSideButton != null)
+        {
+            flipSideButton.OnClicked.AddListener(FlipHiddenSide);
+        }
+        
         StoreOriginalData();
+        
+        // Initialize plane visibility
+        UpdatePlaneVisibility();
     }
     
     void StoreOriginalData()
@@ -187,6 +207,73 @@ public class SimpleMeshCutter : MonoBehaviour
         }
         
         Debug.Log($"Mesh cutting completed with subdivision level {subdivisionLevels}!");
+        isCutActive = true;
+    }
+    
+    public void TogglePlane()
+    {
+        isPlaneActive = !isPlaneActive;
+        UpdatePlaneVisibility();
+        
+        if (isCutActive)
+        {
+            if (isPlaneActive)
+            {
+                // Plane is now on - apply the cut again
+                PerformCut();
+            }
+            else
+            {
+                // Plane is now off - reset to original state
+                ResetCut();
+            }
+        }
+        
+        Debug.Log($"Cutting plane {(isPlaneActive ? "enabled" : "disabled")}");
+    }
+    
+    public void FlipHiddenSide()
+    {
+        hidePositiveSide = !hidePositiveSide;
+        Debug.Log($"Hidden side flipped to {(hidePositiveSide ? "positive" : "negative")} side");
+        
+        // If we have an active cut, clear it first then reapply with the new setting
+        if (isCutActive)
+        {
+            // Clear current cut state
+            ClearCutObjects();
+            
+            // Reapply cut with new side setting if plane is active
+            if (isPlaneActive)
+            {
+                PerformCut();
+            }
+            else
+            {
+                // If plane is hidden, we still want to track that we had a cut
+                isCutActive = true;
+            }
+        }
+    }
+    
+    void UpdatePlaneVisibility()
+    {
+        if (cuttingPlane != null)
+        {
+            // Toggle the cutting plane's renderer visibility
+            Renderer planeRenderer = cuttingPlane.GetComponent<Renderer>();
+            if (planeRenderer != null)
+            {
+                planeRenderer.enabled = isPlaneActive;
+            }
+            
+            // Also toggle any child renderers (in case the plane has complex geometry)
+            Renderer[] childRenderers = cuttingPlane.GetComponentsInChildren<Renderer>();
+            foreach (var renderer in childRenderers)
+            {
+                renderer.enabled = isPlaneActive;
+            }
+        }
     }
     
     bool MeshIntersectsPlane(Mesh mesh, Vector3 planePosition, Vector3 planeNormal, Transform objectTransform)
@@ -942,6 +1029,7 @@ public class SimpleMeshCutter : MonoBehaviour
     public void ResetCut()
     {
         ClearCutObjects();
+        isCutActive = false;
     }
     
     void OnDrawGizmos()
