@@ -2,7 +2,7 @@ using UnityEngine;
 using System.Reflection;
 using System;
 
-public class DotManagementExtension_MRTK3 : MonoBehaviour
+public class MeasurementDotManagementExtension_MRTK3 : MonoBehaviour
 {
     [Header("MRTK3 Buttons")]
     [Tooltip("Button to clear all dots")]
@@ -47,10 +47,10 @@ public class DotManagementExtension_MRTK3 : MonoBehaviour
     
     // Private fields
     private PropertyClickHandler_MRTK3 propertyHandler;
-    private DotPlacementHandler_MRTK3 dotHandler;
-    private LineConnectionHandler_MRTK3 lineHandler;
-    private LoopAreaShader_MRTK3 areaShader;
-    private MeasurementHandler_MRTK3 measurementHandler;
+    private MeasurementDotPlacementHandler_MRTK3 dotHandler;
+    private MeasurementLineConnectionHandler_MRTK3 lineHandler;
+    private MeasurementLoopAreaShader_MRTK3 areaShader;
+    private MeasurementStandaloneHandler_MRTK3 measurementHandler;
     private bool dotsVisible = true;
     private bool linesVisible = true;
     private bool autoDrawEnabled = true;
@@ -62,37 +62,37 @@ public class DotManagementExtension_MRTK3 : MonoBehaviour
     {
         // Find required components
         propertyHandler = FindObjectOfType<PropertyClickHandler_MRTK3>();
-        dotHandler = FindObjectOfType<DotPlacementHandler_MRTK3>();
-        lineHandler = FindObjectOfType<LineConnectionHandler_MRTK3>();
-        areaShader = FindObjectOfType<LoopAreaShader_MRTK3>();
-        measurementHandler = FindObjectOfType<MeasurementHandler_MRTK3>();
+        dotHandler = FindObjectOfType<MeasurementDotPlacementHandler_MRTK3>();
+        lineHandler = FindObjectOfType<MeasurementLineConnectionHandler_MRTK3>();
+        areaShader = FindObjectOfType<MeasurementLoopAreaShader_MRTK3>();
+        measurementHandler = FindObjectOfType<MeasurementStandaloneHandler_MRTK3>();
         
         if (dotHandler == null)
         {
-            Debug.LogError("DotManagementExtension: DotPlacementHandler_MRTK3 not found!");
+            Debug.LogError("MeasurementDotManagementExtension: MeasurementDotPlacementHandler_MRTK3 not found!");
             return;
         }
         
         if (lineHandler == null)
         {
-            Debug.LogWarning("DotManagementExtension: LineConnectionHandler_MRTK3 not found! Line features will be disabled.");
+            Debug.LogWarning("MeasurementDotManagementExtension: MeasurementLineConnectionHandler_MRTK3 not found! Line features will be disabled.");
         }
         
         if (areaShader == null)
         {
-            Debug.LogWarning("DotManagementExtension: LoopAreaShader_MRTK3 not found! Area shading features will be disabled.");
+            Debug.LogWarning("MeasurementDotManagementExtension: MeasurementLoopAreaShader_MRTK3 not found! Area shading features will be disabled.");
         }
         
         if (measurementHandler == null)
         {
-            Debug.LogWarning("DotManagementExtension: MeasurementHandler_MRTK3 not found! Measurement features will be disabled.");
+            Debug.LogWarning("MeasurementDotManagementExtension: MeasurementStandaloneHandler_MRTK3 not found! Measurement features will be disabled.");
         }
         
         // Subscribe to loop events for feedback
         if (dotHandler != null)
         {
-            dotHandler.OnLoopClosed += OnLoopClosed;
-            dotHandler.OnNewLoopStarted += OnNewLoopStarted;
+            dotHandler.OnMeasurementLoopClosed += OnLoopClosed;
+            dotHandler.OnMeasurementNewLoopStarted += OnNewLoopStarted;
         }
         
         // Set up all buttons
@@ -102,13 +102,13 @@ public class DotManagementExtension_MRTK3 : MonoBehaviour
     void OnLoopClosed(int loopIndex)
     {
         if (debugMode)
-            Debug.Log($"DotManagementExtension: Loop {loopIndex + 1} was closed");
+            Debug.Log($"MeasurementDotManagementExtension: Loop {loopIndex + 1} was closed");
     }
     
     void OnNewLoopStarted(int loopIndex)
     {
         if (debugMode)
-            Debug.Log($"DotManagementExtension: New loop {loopIndex + 1} was started");
+            Debug.Log($"MeasurementDotManagementExtension: New loop {loopIndex + 1} was started");
     }
     
     void SetupButtons()
@@ -120,7 +120,7 @@ public class DotManagementExtension_MRTK3 : MonoBehaviour
         }
         else if (debugMode)
         {
-            Debug.LogWarning("DotManagementExtension: Clear All Dots button not assigned");
+            Debug.LogWarning("MeasurementDotManagementExtension: Clear All Dots button not assigned");
         }
         
         if (removeLastDotButton != null)
@@ -129,7 +129,7 @@ public class DotManagementExtension_MRTK3 : MonoBehaviour
         }
         else if (debugMode)
         {
-            Debug.LogWarning("DotManagementExtension: Remove Last Dot button not assigned");
+            Debug.LogWarning("MeasurementDotManagementExtension: Remove Last Dot button not assigned");
         }
         
         if (exportPositionsButton != null)
@@ -138,7 +138,7 @@ public class DotManagementExtension_MRTK3 : MonoBehaviour
         }
         else if (debugMode)
         {
-            Debug.LogWarning("DotManagementExtension: Export Positions button not assigned");
+            Debug.LogWarning("MeasurementDotManagementExtension: Export Positions button not assigned");
         }
         
         if (toggleVisibilityButton != null)
@@ -147,7 +147,7 @@ public class DotManagementExtension_MRTK3 : MonoBehaviour
         }
         else if (debugMode)
         {
-            Debug.LogWarning("DotManagementExtension: Toggle Visibility button not assigned");
+            Debug.LogWarning("MeasurementDotManagementExtension: Toggle Visibility button not assigned");
         }
         
         // Set up line management buttons
@@ -157,7 +157,7 @@ public class DotManagementExtension_MRTK3 : MonoBehaviour
         }
         else if (debugMode)
         {
-            Debug.LogWarning("DotManagementExtension: Toggle Lines button not assigned");
+            Debug.LogWarning("MeasurementDotManagementExtension: Toggle Lines button not assigned");
         }
         
         // Set up loop management buttons
@@ -167,7 +167,7 @@ public class DotManagementExtension_MRTK3 : MonoBehaviour
         }
         else if (debugMode)
         {
-            Debug.LogWarning("DotManagementExtension: Force Close Loop button not assigned");
+            Debug.LogWarning("MeasurementDotManagementExtension: Force Close Loop button not assigned");
         }
         
         if (clearLastLoopButton != null)
@@ -176,7 +176,7 @@ public class DotManagementExtension_MRTK3 : MonoBehaviour
         }
         else if (debugMode)
         {
-            Debug.LogWarning("DotManagementExtension: Clear Last Loop button not assigned");
+            Debug.LogWarning("MeasurementDotManagementExtension: Clear Last Loop button not assigned");
         }
         
         // Set up area shading buttons
@@ -186,7 +186,7 @@ public class DotManagementExtension_MRTK3 : MonoBehaviour
         }
         else if (debugMode)
         {
-            Debug.LogWarning("DotManagementExtension: Toggle Shading button not assigned");
+            Debug.LogWarning("MeasurementDotManagementExtension: Toggle Shading button not assigned");
         }
         
         // Set up measurement buttons
@@ -196,7 +196,7 @@ public class DotManagementExtension_MRTK3 : MonoBehaviour
         }
         else if (debugMode)
         {
-            Debug.LogWarning("DotManagementExtension: Toggle Measurements button not assigned");
+            Debug.LogWarning("MeasurementDotManagementExtension: Toggle Measurements button not assigned");
         }
         
         if (toggleUnitsButton != null)
@@ -205,7 +205,7 @@ public class DotManagementExtension_MRTK3 : MonoBehaviour
         }
         else if (debugMode)
         {
-            Debug.LogWarning("DotManagementExtension: Toggle Units button not assigned");
+            Debug.LogWarning("MeasurementDotManagementExtension: Toggle Units button not assigned");
         }
         
         if (printSummaryButton != null)
@@ -214,7 +214,7 @@ public class DotManagementExtension_MRTK3 : MonoBehaviour
         }
         else if (debugMode)
         {
-            Debug.LogWarning("DotManagementExtension: Print Summary button not assigned");
+            Debug.LogWarning("MeasurementDotManagementExtension: Print Summary button not assigned");
         }
     }
     
@@ -228,14 +228,14 @@ public class DotManagementExtension_MRTK3 : MonoBehaviour
             if (debugMode)
             {
                 if (subscribed)
-                    Debug.Log($"DotManagementExtension: Successfully set up {buttonName} button");
+                    Debug.Log($"MeasurementDotManagementExtension: Successfully set up {buttonName} button");
                 else
-                    Debug.LogWarning($"DotManagementExtension: Failed to set up {buttonName} button");
+                    Debug.LogWarning($"MeasurementDotManagementExtension: Failed to set up {buttonName} button");
             }
         }
         else if (debugMode)
         {
-            Debug.LogWarning($"DotManagementExtension: No StatefulInteractable found on {buttonName} button");
+            Debug.LogWarning($"MeasurementDotManagementExtension: No StatefulInteractable found on {buttonName} button");
         }
     }
     
@@ -304,7 +304,7 @@ public class DotManagementExtension_MRTK3 : MonoBehaviour
             }
             
             if (debugMode)
-                Debug.Log("DotManagementExtension: Cleared all dots, lines, shaded areas, and measurements");
+                Debug.Log("MeasurementDotManagementExtension: Cleared all dots, lines, shaded areas, and measurements");
         }
     }
     
@@ -329,7 +329,7 @@ public class DotManagementExtension_MRTK3 : MonoBehaviour
             // Note: MeasurementHandler updates automatically via events, no manual update needed
             
             if (debugMode)
-                Debug.Log("DotManagementExtension: Removed last dot and updated lines, shading, and measurements");
+                Debug.Log("MeasurementDotManagementExtension: Removed last dot and updated lines, shading, and measurements");
         }
     }
     
@@ -343,12 +343,12 @@ public class DotManagementExtension_MRTK3 : MonoBehaviour
             
             if (allLoops.Count == 0)
             {
-                Debug.LogWarning("DotManagementExtension: No dots to export!");
+                Debug.LogWarning("MeasurementDotManagementExtension: No dots to export!");
                 return;
             }
             
-            string export = "Dot Positions and Loop Data Export:\n";
-            export += "=====================================\n";
+            string export = "Measurement Dot Positions and Loop Data Export:\n";
+            export += "=============================================\n";
             export += $"Completed Loops: {completedLoops}\n";
             export += $"Current Loop Dots: {currentLoopDots}\n";
             export += $"Total Loops: {allLoops.Count}\n";
@@ -394,7 +394,7 @@ public class DotManagementExtension_MRTK3 : MonoBehaviour
                 var loopPositions = allLoops[loopIndex];
                 bool isCompleted = loopIndex < completedLoops;
                 
-                export += $"\n{(isCompleted ? "COMPLETED" : "CURRENT")} LOOP {loopIndex + 1}:\n";
+                export += $"\n{(isCompleted ? "COMPLETED" : "CURRENT")} MEASUREMENT LOOP {loopIndex + 1}:\n";
                 export += $"Dots in loop: {loopPositions.Count}\n";
                 
                 if (isCompleted)
@@ -435,7 +435,7 @@ public class DotManagementExtension_MRTK3 : MonoBehaviour
                 }
             }
             
-            export += "\n=====================================\n";
+            export += "\n=============================================\n";
             export += $"Exported at: {System.DateTime.Now:yyyy-MM-dd HH:mm:ss}\n";
             
             Debug.Log(export);
@@ -444,7 +444,7 @@ public class DotManagementExtension_MRTK3 : MonoBehaviour
             GUIUtility.systemCopyBuffer = export;
             
             if (debugMode)
-                Debug.Log("DotManagementExtension: Loop data exported to console and clipboard");
+                Debug.Log("MeasurementDotManagementExtension: Loop data exported to console and clipboard");
         }
     }
     
@@ -456,7 +456,7 @@ public class DotManagementExtension_MRTK3 : MonoBehaviour
             dotHandler.dotsParent.gameObject.SetActive(dotsVisible);
             
             if (debugMode)
-                Debug.Log($"DotManagementExtension: Dots are now {(dotsVisible ? "visible" : "hidden")}");
+                Debug.Log($"MeasurementDotManagementExtension: Dots are now {(dotsVisible ? "visible" : "hidden")}");
         }
     }
     
@@ -468,7 +468,7 @@ public class DotManagementExtension_MRTK3 : MonoBehaviour
             linesVisible = !linesVisible;
             
             if (debugMode)
-                Debug.Log($"DotManagementExtension: Lines are now {(linesVisible ? "visible" : "hidden")}");
+                Debug.Log($"MeasurementDotManagementExtension: Lines are now {(linesVisible ? "visible" : "hidden")}");
         }
     }
     
@@ -480,7 +480,7 @@ public class DotManagementExtension_MRTK3 : MonoBehaviour
             shadingVisible = !shadingVisible;
             
             if (debugMode)
-                Debug.Log($"DotManagementExtension: Shaded areas are now {(shadingVisible ? "visible" : "hidden")}");
+                Debug.Log($"MeasurementDotManagementExtension: Shaded areas are now {(shadingVisible ? "visible" : "hidden")}");
         }
     }
     
@@ -492,7 +492,7 @@ public class DotManagementExtension_MRTK3 : MonoBehaviour
             measurementsVisible = !measurementsVisible;
             
             if (debugMode)
-                Debug.Log($"DotManagementExtension: Measurements are now {(measurementsVisible ? "visible" : "hidden")}");
+                Debug.Log($"MeasurementDotManagementExtension: Measurements are now {(measurementsVisible ? "visible" : "hidden")}");
         }
     }
     
@@ -503,7 +503,7 @@ public class DotManagementExtension_MRTK3 : MonoBehaviour
             measurementHandler.ToggleUnits();
             
             if (debugMode)
-                Debug.Log("DotManagementExtension: Toggled measurement units");
+                Debug.Log("MeasurementDotManagementExtension: Toggled measurement units");
         }
     }
     
@@ -514,7 +514,7 @@ public class DotManagementExtension_MRTK3 : MonoBehaviour
             measurementHandler.PrintMeasurementSummary();
             
             if (debugMode)
-                Debug.Log("DotManagementExtension: Printed measurement summary to console");
+                Debug.Log("MeasurementDotManagementExtension: Printed measurement summary to console");
         }
     }
     
@@ -527,7 +527,7 @@ public class DotManagementExtension_MRTK3 : MonoBehaviour
             if (currentLoopDots < 3)
             {
                 if (debugMode)
-                    Debug.LogWarning("DotManagementExtension: Cannot close loop - need at least 3 dots");
+                    Debug.LogWarning("MeasurementDotManagementExtension: Cannot close loop - need at least 3 dots");
                 return;
             }
             
@@ -539,11 +539,11 @@ public class DotManagementExtension_MRTK3 : MonoBehaviour
                 method.Invoke(dotHandler, null);
                 
                 if (debugMode)
-                    Debug.Log("DotManagementExtension: Force closed current loop");
+                    Debug.Log("MeasurementDotManagementExtension: Force closed current loop");
             }
             else if (debugMode)
             {
-                Debug.LogError("DotManagementExtension: Could not find CloseCurrentLoop method");
+                Debug.LogError("MeasurementDotManagementExtension: Could not find CloseCurrentLoop method");
             }
         }
     }
@@ -569,7 +569,7 @@ public class DotManagementExtension_MRTK3 : MonoBehaviour
                     }
                     
                     if (debugMode)
-                        Debug.Log("DotManagementExtension: Cleared current loop");
+                        Debug.Log("MeasurementDotManagementExtension: Cleared current loop");
                 }
             }
             else if (completedLoops > 0)
@@ -578,11 +578,11 @@ public class DotManagementExtension_MRTK3 : MonoBehaviour
                 dotHandler.RemoveLastDot(); // This should remove the last completed loop
                 
                 if (debugMode)
-                    Debug.Log("DotManagementExtension: Cleared last completed loop");
+                    Debug.Log("MeasurementDotManagementExtension: Cleared last completed loop");
             }
             else if (debugMode)
             {
-                Debug.LogWarning("DotManagementExtension: No loops to clear");
+                Debug.LogWarning("MeasurementDotManagementExtension: No loops to clear");
             }
             
             // Update lines after clearing
@@ -677,8 +677,8 @@ public class DotManagementExtension_MRTK3 : MonoBehaviour
         // Unsubscribe from loop events
         if (dotHandler != null)
         {
-            dotHandler.OnLoopClosed -= OnLoopClosed;
-            dotHandler.OnNewLoopStarted -= OnNewLoopStarted;
+            dotHandler.OnMeasurementLoopClosed -= OnLoopClosed;
+            dotHandler.OnMeasurementNewLoopStarted -= OnNewLoopStarted;
         }
         
         // Remove all button listeners

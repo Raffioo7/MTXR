@@ -106,8 +106,12 @@ public class SimpleMeshCutter : MonoBehaviour
         
         StoreOriginalData();
         
-        // Don't automatically hide the plane - let it start in whatever state it's set to in the scene
-        // The user can control visibility with the toggle button
+        // Make sure plane starts inactive (entire GameObject)
+        if (cuttingPlane != null)
+        {
+            cuttingPlane.SetActive(false);
+            isPlaneActive = false;
+        }
     }
     
     void StoreOriginalData()
@@ -212,40 +216,34 @@ public class SimpleMeshCutter : MonoBehaviour
     
     public void TogglePlane()
     {
-        // Check current visibility state of the plane
-        bool currentlyVisible = IsPlaneCurrentlyVisible();
+        // Toggle the entire GameObject active state
+        isPlaneActive = !isPlaneActive;
         
-        // Toggle visibility
-        isPlaneActive = !currentlyVisible;
-        SetPlaneVisibility(isPlaneActive);
+        if (cuttingPlane != null)
+        {
+            cuttingPlane.SetActive(isPlaneActive);
+        }
         
         if (isCutActive)
         {
             if (isPlaneActive)
             {
-                // Plane is now visible - apply the cut again
+                // Plane is now active - apply the cut again
                 PerformCut();
             }
             else
             {
-                // Plane is now hidden - reset to original state
+                // Plane is now inactive - reset to original state
                 ResetCut();
             }
         }
         
-        Debug.Log($"Cutting plane {(isPlaneActive ? "shown" : "hidden")}");
+        Debug.Log($"Cutting plane {(isPlaneActive ? "activated" : "deactivated")}");
     }
     
     bool IsPlaneCurrentlyVisible()
     {
         if (cuttingPlane == null) return false;
-        
-        Renderer planeRenderer = cuttingPlane.GetComponent<Renderer>();
-        if (planeRenderer != null)
-        {
-            return planeRenderer.enabled;
-        }
-        
         return cuttingPlane.activeInHierarchy;
     }
     
