@@ -106,8 +106,8 @@ public class SimpleMeshCutter : MonoBehaviour
         
         StoreOriginalData();
         
-        // Initialize plane visibility
-        UpdatePlaneVisibility();
+        // Don't automatically hide the plane - let it start in whatever state it's set to in the scene
+        // The user can control visibility with the toggle button
     }
     
     void StoreOriginalData()
@@ -212,24 +212,41 @@ public class SimpleMeshCutter : MonoBehaviour
     
     public void TogglePlane()
     {
-        isPlaneActive = !isPlaneActive;
-        UpdatePlaneVisibility();
+        // Check current visibility state of the plane
+        bool currentlyVisible = IsPlaneCurrentlyVisible();
+        
+        // Toggle visibility
+        isPlaneActive = !currentlyVisible;
+        SetPlaneVisibility(isPlaneActive);
         
         if (isCutActive)
         {
             if (isPlaneActive)
             {
-                // Plane is now on - apply the cut again
+                // Plane is now visible - apply the cut again
                 PerformCut();
             }
             else
             {
-                // Plane is now off - reset to original state
+                // Plane is now hidden - reset to original state
                 ResetCut();
             }
         }
         
-        Debug.Log($"Cutting plane {(isPlaneActive ? "enabled" : "disabled")}");
+        Debug.Log($"Cutting plane {(isPlaneActive ? "shown" : "hidden")}");
+    }
+    
+    bool IsPlaneCurrentlyVisible()
+    {
+        if (cuttingPlane == null) return false;
+        
+        Renderer planeRenderer = cuttingPlane.GetComponent<Renderer>();
+        if (planeRenderer != null)
+        {
+            return planeRenderer.enabled;
+        }
+        
+        return cuttingPlane.activeInHierarchy;
     }
     
     public void FlipHiddenSide()
@@ -258,21 +275,31 @@ public class SimpleMeshCutter : MonoBehaviour
     
     void UpdatePlaneVisibility()
     {
+        // This method is no longer used for automatic updates
+        // Plane visibility is only controlled by the toggle button
+    }
+    
+    void SetPlaneVisibility(bool visible)
+    {
         if (cuttingPlane != null)
         {
             // Toggle the cutting plane's renderer visibility
             Renderer planeRenderer = cuttingPlane.GetComponent<Renderer>();
             if (planeRenderer != null)
             {
-                planeRenderer.enabled = isPlaneActive;
+                planeRenderer.enabled = visible;
             }
             
             // Also toggle any child renderers (in case the plane has complex geometry)
             Renderer[] childRenderers = cuttingPlane.GetComponentsInChildren<Renderer>();
             foreach (var renderer in childRenderers)
             {
-                renderer.enabled = isPlaneActive;
+                renderer.enabled = visible;
             }
+            
+            // Optional: Also hide/show the entire GameObject
+            // Uncomment the line below if you want to completely hide the plane GameObject
+            // cuttingPlane.SetActive(visible);
         }
     }
     

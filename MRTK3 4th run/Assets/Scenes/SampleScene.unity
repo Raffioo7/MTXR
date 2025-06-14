@@ -1429,7 +1429,6 @@ RectTransform:
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children:
-  - {fileID: 1225965700}
   - {fileID: 815737427}
   - {fileID: 367084254}
   - {fileID: 1755886226}
@@ -1507,6 +1506,7 @@ Transform:
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children:
+  - {fileID: 1225965700}
   - {fileID: 1281656034}
   m_Father: {fileID: 1962111017}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
@@ -4457,9 +4457,6 @@ PrefabInstance:
     - targetCorrespondingSourceObject: {fileID: 2244185731031694095, guid: cd0f0697f0939504389ec612388f609a, type: 3}
       insertIndex: -1
       addedObject: {fileID: 1618869626}
-    - targetCorrespondingSourceObject: {fileID: 4659777866328155393, guid: cd0f0697f0939504389ec612388f609a, type: 3}
-      insertIndex: -1
-      addedObject: {fileID: 0}
   m_SourcePrefab: {fileID: 100100000, guid: cd0f0697f0939504389ec612388f609a, type: 3}
 --- !u!1 &849712741
 GameObject:
@@ -10455,10 +10452,10 @@ MonoBehaviour:
   flipSideButton: {fileID: 1618869627}
   destroyOriginal: 1
   hidePositiveSide: 1
-  edgeSmoothingThreshold: 0.1
+  edgeSmoothingThreshold: 0.001
   subdivideIntersectingTriangles: 1
-  subdivisionLevels: 3
-  subdivisionThreshold: 1
+  subdivisionLevels: 4
+  subdivisionThreshold: 0.01
   fillCutHoles: 0
   hideNonIntersectingObjects: 1
   useBoundsForIntersection: 1
@@ -11942,7 +11939,7 @@ PrefabInstance:
   serializedVersion: 2
   m_Modification:
     serializedVersion: 3
-    m_TransformParent: {fileID: 322990460}
+    m_TransformParent: {fileID: 331516345}
     m_Modifications:
     - target: {fileID: 926733118641802137, guid: bdc7763086c893249b8fa01161f8171a, type: 3}
       propertyPath: m_Pivot.x
@@ -11994,7 +11991,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 926733118641802137, guid: bdc7763086c893249b8fa01161f8171a, type: 3}
       propertyPath: m_LocalPosition.z
-      value: 0.89
+      value: 0.88960004
       objectReference: {fileID: 0}
     - target: {fileID: 926733118641802137, guid: bdc7763086c893249b8fa01161f8171a, type: 3}
       propertyPath: m_LocalRotation.w
@@ -12018,7 +12015,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 926733118641802137, guid: bdc7763086c893249b8fa01161f8171a, type: 3}
       propertyPath: m_AnchoredPosition.y
-      value: 0
+      value: -0.044999957
       objectReference: {fileID: 0}
     - target: {fileID: 926733118641802137, guid: bdc7763086c893249b8fa01161f8171a, type: 3}
       propertyPath: m_LocalEulerAnglesHint.x
@@ -12039,6 +12036,10 @@ PrefabInstance:
     - target: {fileID: 4683812031246308692, guid: bdc7763086c893249b8fa01161f8171a, type: 3}
       propertyPath: m_IsActive
       value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 5189338689285035601, guid: bdc7763086c893249b8fa01161f8171a, type: 3}
+      propertyPath: m_Enabled
+      value: 0
       objectReference: {fileID: 0}
     m_RemovedComponents: []
     m_RemovedGameObjects: []
