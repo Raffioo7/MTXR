@@ -63,25 +63,46 @@ public class AddCollidersToModel : MonoBehaviour
             // Add Stateful Interactable if enabled and missing
             if (addStatefulInteractable)
             {
-                // Method 1: Try string-based component addition (most reliable)
+                // Check if StatefulInteractable component already exists
                 if (obj.GetComponent("StatefulInteractable") == null)
                 {
                     try
                     {
-                        Component addedComponent = UnityEngineInternal.APIUpdaterRuntimeServices.AddComponent(obj, "Assets/FullScaleBridge/MeshColliderGenerator.cs (45,48)", "StatefulInteractable");
-                        if (addedComponent != null)
+                        // Try to find StatefulInteractable in all loaded assemblies
+                        Type statefulInteractableType = null;
+                        
+                        // Search through all assemblies for the type
+                        foreach (var assembly in System.AppDomain.CurrentDomain.GetAssemblies())
                         {
-                            interactablesAdded++;
-                            Debug.Log($"Added StatefulInteractable to {obj.name}");
+                            statefulInteractableType = assembly.GetType("Microsoft.MixedReality.Toolkit.StatefulInteractable");
+                            if (statefulInteractableType != null) break;
+                            
+                            statefulInteractableType = assembly.GetType("MixedReality.Toolkit.StatefulInteractable");
+                            if (statefulInteractableType != null) break;
+                            
+                            statefulInteractableType = assembly.GetType("StatefulInteractable");
+                            if (statefulInteractableType != null) break;
+                        }
+                        
+                        if (statefulInteractableType != null)
+                        {
+                            Component addedComponent = obj.AddComponent(statefulInteractableType);
+                            if (addedComponent != null)
+                            {
+                                interactablesAdded++;
+                                Debug.Log($"Added StatefulInteractable to {obj.name}");
+                            }
                         }
                         else
                         {
-                            Debug.LogWarning($"Failed to add StatefulInteractable to {obj.name}. Component type not found.");
+                            Debug.LogWarning($"StatefulInteractable component type not found. MRTK3 packages need to be installed first.");
+                            Debug.LogWarning("Install MRTK3 using Mixed Reality Feature Tool or Package Manager, then try again.");
                         }
                     }
                     catch (System.Exception e)
                     {
                         Debug.LogWarning($"Exception adding StatefulInteractable to {obj.name}: {e.Message}");
+                        Debug.LogWarning("This is likely because MRTK3 is not properly installed or imported.");
                     }
                 }
             }
