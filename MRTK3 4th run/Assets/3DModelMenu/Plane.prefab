@@ -14,7 +14,6 @@ GameObject:
   - component: {fileID: 54441857325428253}
   - component: {fileID: 5136069140576749836}
   - component: {fileID: 5976854428680731306}
-  - component: {fileID: -8011135485259620630}
   m_Layer: 0
   m_Name: Plane
   m_TagString: Untagged
@@ -342,18 +341,3 @@ MonoBehaviour:
       reference: MixedReality.Toolkit.SpatialManipulation.RotateLogic, MixedReality.Toolkit.SpatialManipulation
     scaleLogicType:
       reference: MixedReality.Toolkit.SpatialManipulation.ScaleLogic, MixedReality.Toolkit.SpatialManipulation
---- !u!114 &-8011135485259620630
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 4683812031246308692}
-  m_Enabled: 0
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: d2543c04cf7965346a9b2f5ec4d28c67, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  panelColor: {r: 1, g: 0, b: 0, a: 0.3}
-  doubleSided: 1
-  useURPShader: 1
